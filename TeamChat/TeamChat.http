@@ -1,0 +1,6 @@
+@TeamChat_HostAddress = http://localhost:5263
+
+GET {{TeamChat_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
