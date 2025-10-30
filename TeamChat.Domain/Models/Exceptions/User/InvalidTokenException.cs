@@ -1,6 +1,5 @@
-﻿namespace TeamChat.Domain.Models.Exceptions.User
+﻿namespace TeamChat.Domain.Models.Exceptions.User;
+
+public class InvalidTokenException: Exception
 {
-    public class InvalidTokenException: Exception
-    {
-    }
 }

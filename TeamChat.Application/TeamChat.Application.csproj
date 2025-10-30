@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TeamChat.Domain\TeamChat.Domain.csproj" />
-    <ProjectReference Include="..\TeamChat.Infrastructure\TeamChat.Infrastructure.csproj" />
+    <ProjectReference Include="..\TeamChat.Messaging.Contracts\TeamChat.Messaging.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

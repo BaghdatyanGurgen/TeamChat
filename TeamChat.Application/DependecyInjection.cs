@@ -1,15 +1,15 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using TeamChat.Application.Abstraction;
-using TeamChat.Application.Services;
+﻿using TeamChat.Application.Services;
+using Microsoft.Extensions.DependencyInjection;
+using TeamChat.Application.Abstraction.Services;
 
-namespace TeamChat.Application
+namespace TeamChat.Application;
+
+public static class DependencyInjection
 {
-    public static class DependencyInjection
+    public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        public static IServiceCollection AddApplication(this IServiceCollection services)
-        {
-            services.AddScoped<IUserService, UserService>();
-            return services;
-        }
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<ICompanyService, CompanyService>();
+        return services;
     }
 }

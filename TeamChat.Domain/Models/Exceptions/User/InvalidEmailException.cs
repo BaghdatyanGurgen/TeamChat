@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace TeamChat.Domain.Models.Exceptions.User;
 
-namespace TeamChat.Domain.Models.Exceptions.User
+public class InvalidEmailException: ArgumentException
 {
-    public class InvalidEmailException: ArgumentException
-    {
-    }
 }

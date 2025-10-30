@@ -1,16 +1,15 @@
-﻿namespace TeamChat.Domain.Entities
+﻿namespace TeamChat.Domain.Entities;
+
+public class UserRefreshToken
 {
-    public class UserRefreshToken
-    {
-        public Guid Id { get; set; }
-        public Guid UserId { get; set; }
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
 
-        public string TokenHash { get; set; } = string.Empty;
-        public DateTime ExpiresAt { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime? RevokedAt { get; set; }
-        public string PlainToken { get; set; } = string.Empty;
+    public string TokenHash { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? RevokedAt { get; set; }
+    public string PlainToken { get; set; } = string.Empty;
 
-        public User User { get; set; } = null!;
-    }
+    public User User { get; set; } = null!;
 }

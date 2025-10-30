@@ -1,85 +1,122 @@
 ﻿using TeamChat.Domain.Entities;
 using TeamChat.Application.DTOs;
-using TeamChat.Domain.Interfaces;
-using TeamChat.Infrastructure.Email;
-using TeamChat.Application.Abstraction;
-using TeamChat.Application.DTOs.User.Request;
-using TeamChat.Domain.Models.Exceptions.User;
-using TeamChat.Application.DTOs.User.Responses;
 using TeamChat.Application.Validation;
+using TeamChat.Application.DTOs.User;
+using TeamChat.Domain.Models.Exceptions.User;
+using TeamChat.Application.Abstraction.Services;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Application.Abstraction.Infrastructure.Security;
+using TeamChat.Application.Abstraction.Infrastructure.Email;
 
-namespace TeamChat.Application.Services
+namespace TeamChat.Application.Services;
+
+public class UserService(IUserRepository userRepository, IEmailSender emailSender,
+                         IRefreshTokenService refreshTokenService, IJwtTokenService jwtTokenService)
+    : IUserService
 {
-    public class UserService(IUserRepository userRepository, IEmailSender emailSender) : IUserService
+    private readonly IEmailSender _emailSender = emailSender;
+    private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
+
+    private readonly IUserRepository _userRepository = userRepository;
+    private readonly IJwtTokenService _jwtTokenService = jwtTokenService;
+
+    public async Task<ResponseModel<RegisterEmailResponse>> CreateDraftUserAsync(CreateDraftUserRequest request)
     {
-        private readonly IUserRepository _userRepository = userRepository;
-        private readonly IEmailSender _emailSender = emailSender;
+        if (!await _userRepository.IsEmailAvailableAsync(request.Email))
+            throw new InvalidEmailException();
 
-        public async Task<ResponseModel<RegisterEmailResponse>> CreateDraftUserAsync(CreateDraftUserRequest request)
+        if (!UserValidation.IsValidEmail(request.Email))
+            throw new InvalidEmailException();
+
+        var user = new User
         {
-            if (!await _userRepository.IsEmailAvailableAsync(request.Email))
-                throw new InvalidEmailException();
+            Email = request.Email,
+            EmailConfirmed = false,
+            CreatedAt = DateTime.UtcNow,
+            EmailConfirmationCode = Guid.NewGuid().ToString()
+        };
 
-            if (!UserValidation.IsValidEmail(request.Email))
-                throw new InvalidEmailException();
+        var token = user.EmailConfirmationCode;
+        await _userRepository.AddAsync(user);
+        var verificationLink = _emailSender.BuildVerificationLink(user.Id, ref token);
+        await _emailSender.SendEmailAsync(user.Email, "Confirmation",
+            $"Compleat registration: {verificationLink}");
 
-            var user = new User
-            {
-                Email = request.Email,
-                EmailConfirmed = false,
-                CreatedAt = DateTime.UtcNow,
-                EmailConfirmationCode = Guid.NewGuid().ToString()
-            };
+        var response = new RegisterEmailResponse(user.Id, user.Email, token!);
 
-            await _userRepository.AddAsync(user);
-            var verificationLink = _emailSender.BuildVerificationLink(user.Id, user.EmailConfirmationCode);
-            await _emailSender.SendEmailAsync(user.Email, "Подтверждение регистрации",
-                $"Для завершения регистрации перейдите по ссылке: {verificationLink}");
+        return ResponseModel<RegisterEmailResponse>.Success(response, "Mail send");
+    }
 
-            var response = new RegisterEmailResponse
-            {
-                UserId = user.Id,
-                Email = user.Email
-            };
+    public async Task<ResponseModel<VerifyEmailResponse>> VerifyEmailAsync(VerivyEmailRequest request)
+    {
+        var user = await _userRepository.GetByIdAsync(request.UserId)
+            ?? throw new UserNotFoundException();
 
-            return ResponseModel<RegisterEmailResponse>.Success(response, "Письмо с подтверждением отправлено на ваш email");
-        }
+        if (user.EmailConfirmed)
+            throw new InvalidEmailException();
 
-        public async Task<ResponseModel<VerifyEmailResponse>> VerifyEmailAsync(VerivyEmailRequest request)
-        {
-            var user = await _userRepository.GetByIdAsync(request.UserId)
-                ?? throw new UserNotFoundException();
+        if (user.EmailConfirmationCode != request.Token)
+            throw new InvalidTokenException();
 
-            if (user.EmailConfirmed)
-                throw new InvalidEmailException();
+        user.EmailConfirmed = true;
+        user.EmailConfirmationCode = string.Empty;
+        await _userRepository.UpdateAsync(user);
 
-            if (user.EmailConfirmationCode != request.Token)
-                throw new InvalidTokenException();
+        var response = new VerifyEmailResponse(user.Id);
 
-            user.EmailConfirmed = true;
-            user.EmailConfirmationCode = string.Empty;
-            await _userRepository.UpdateAsync(user);
+        return ResponseModel<VerifyEmailResponse>.Success(response, "Mail confirmed.");
+    }
 
-            var response = new VerifyEmailResponse
-            {
-                UserId = user.Id
-            };
+    public async Task<ResponseModel<SetPasswordResponse>> SetPasswordAsync(SetPasswordRequest request)
+    {
+        if (!UserValidation.IsValidPassword(request.Password))
+            throw new InvalidPasswordException();
 
-            return ResponseModel<VerifyEmailResponse>.Success(response, "Email успешно подтверждён.");
-        }
+        var user = await _userRepository.SetPassword(request.UserId, request.Password);
+        var token = _jwtTokenService.GenerateToken(user);
+        var refreshToken = await _refreshTokenService.CreateAsync(request.UserId);
 
-        public async Task<ResponseModel<SetPasswordResponse>> SetPasswordAsync(SetPasswordRequest request)
-        {
-            if (!UserValidation.IsValidPassword(request.Password))
-                throw new InvalidPasswordException();
+        var response = new SetPasswordResponse(user.Id, token, refreshToken.PlainToken);
 
-            var setPasswordResult = await _userRepository.SetPassword(request.UserId, request.Password);
+        return ResponseModel<SetPasswordResponse>.Success(response);
+    }
 
-            var response = new SetPasswordResponse
-            {
-                UserId = setPasswordResult
-            };
-            return ResponseModel<SetPasswordResponse>.Success(response, "Пароль успешно установлен.");
-        }
+    public async Task<ResponseModel<UserProfileResponse>> SetUserProfileAsync(Guid userId, SetUserProfileRequest request)
+    {
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new UserNotFoundException();
+
+        user.FirstName = request.FirstName;
+        user.LastName = request.LastName;
+
+        await _userRepository.UpdateAsync(user);
+
+        var response = new UserProfileResponse(user.Id, user.Email, user.FirstName, user.LastName, user.AvatarUrl, user.CreatedAt);
+
+        return ResponseModel<UserProfileResponse>.Success(response);
+    }
+
+    public Task<ResponseModel<UserProfileResponse>> SetUserProfileAsync(SetUserProfileRequest request)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<ResponseModel<AuthoResponse>> LoginAsync(LoginRequest request)
+    {
+        if (!UserValidation.IsValidEmail(request.Email))
+            throw new InvalidEmailException();
+        if (!UserValidation.IsValidPassword(request.Password))
+            throw new InvalidPasswordException();
+
+        var user = await _userRepository.GetByEmailAndPasswordAsync(request.Email, request.Password);
+
+        var jwtToken = _jwtTokenService.GenerateToken(user);
+
+        var refreshToken = await _refreshTokenService.CreateAsync(user.Id);
+
+        var profile = new UserProfileResponse(user.Id, user.Email, user.FirstName, user.LastName, user.AvatarUrl, user.CreatedAt);
+        var response = new AuthoResponse(profile, jwtToken, refreshToken.PlainToken);
+
+        return ResponseModel<AuthoResponse>.Success(response);
     }
 }

@@ -1,74 +1,73 @@
 ﻿using System.Text;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using TeamChat.Infrastructure.Persistence;
+using TeamChat.Domain;
 using TeamChat.Domain.Entities;
+using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
+using TeamChat.Application.Abstraction.Infrastructure.Security;
+using TeamChat.Infrastructure.Persistance;
 
-namespace TeamChat.Infrastructure.Security.RefreshToken
+namespace TeamChat.Infrastructure.Security.RefreshToken;
+
+public class RefreshTokenService(AppDbContext db) : IRefreshTokenService
 {
+    private readonly AppDbContext _db = db;
 
-    public class RefreshTokenService : IRefreshTokenService
+    public async Task<UserRefreshToken?> GetValidTokenAsync(string refreshToken)
     {
-        private readonly AppDbContext _db;
+        var hash = ComputeHash(refreshToken);
 
-        public RefreshTokenService(AppDbContext db)
+        var token = await _db.UserRefreshTokens
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t =>
+                t.TokenHash == hash &&
+                t.RevokedAt == null &&
+                t.ExpiresAt > DateTime.UtcNow);
+
+        return token;
+    }
+
+    public async Task<UserRefreshToken> CreateAsync(Guid userId)
+    {
+        var newToken = GenerateRefreshToken();
+        var hash = ComputeHash(newToken);
+
+        var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
+        if (!userExists)
+            throw new InvalidOperationException($"User with ID {userId} does not exist.");
+
+        var refreshToken = new UserRefreshToken
         {
-            _db = db;
-        }
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = hash,
+            PlainToken = newToken,
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        };
 
-        public async Task<UserRefreshToken?> GetValidTokenAsync(string refreshToken)
-        {
-            var hash = ComputeHash(refreshToken);
+        _db.UserRefreshTokens.Add(refreshToken);
+        await _db.SaveChangesAsync();
 
-            var token = await _db.UserRefreshTokens
-                .Include(t => t.User)
-                .FirstOrDefaultAsync(t =>
-                    t.TokenHash == hash &&
-                    t.RevokedAt == null &&
-                    t.ExpiresAt > DateTime.UtcNow);
+        refreshToken.PlainToken = newToken;
+        return refreshToken;
+    }
 
-            return token;
-        }
+    public async Task<bool> InvalidateAsync(UserRefreshToken token)
+    {
+        token.RevokedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return true;
+    }
 
-        public async Task<UserRefreshToken> CreateAsync(Guid userId)
-        {
-            var newToken = GenerateRefreshToken();
-            var hash = ComputeHash(newToken);
+    private static string GenerateRefreshToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(64);
+        return Convert.ToBase64String(bytes);
+    }
 
-            var refreshToken = new UserRefreshToken
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                TokenHash = hash,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            };
-
-            _db.UserRefreshTokens.Add(refreshToken);
-            await _db.SaveChangesAsync();
-
-            refreshToken.PlainToken = newToken;
-            return refreshToken;
-        }
-
-        public async Task<bool> InvalidateAsync(UserRefreshToken token)
-        {
-            token.RevokedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-            return true;
-        }
-
-        private string GenerateRefreshToken()
-        {
-            var bytes = RandomNumberGenerator.GetBytes(64);
-            return Convert.ToBase64String(bytes);
-        }
-
-        private string ComputeHash(string input)
-        {
-            using var sha256 = SHA256.Create();
-            var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
-            return Convert.ToBase64String(bytes);
-        }
+    private static string ComputeHash(string input)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToBase64String(bytes);
     }
 }
 

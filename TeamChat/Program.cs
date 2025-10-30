@@ -1,31 +1,69 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
+﻿using System.Text;
 using TeamChat.Application;
 using TeamChat.Infrastructure;
+using Microsoft.OpenApi.Models;
 using TeamChat.Infrastructure.Email;
-using TeamChat.Infrastructure.Persistence;
-
+using Microsoft.IdentityModel.Tokens;
+using TeamChat.Infrastructure.RabbitMQ;
+using TeamChat.Infrastructure.Security.Jwt;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// =========================
-// CONFIGURATION
-// =========================
 var configuration = builder.Configuration;
 
 // =========================
 // DEPENDENCY INJECTION
 // =========================
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication();
+builder.Services.AddAllInfrastructure(configuration);
 
-builder.Services.AddApplication();    // Application layer
-builder.Services.AddInfrastructure(configuration); // Infrastructure + Persistence
 builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
+builder.Services.Configure<RabbitMQSettings>(configuration.GetSection("RabbitMq"));
 
 // =========================
-// CONTROLLERS
+// JWT AUTHENTICATION
 // =========================
+var jwtSettings = configuration.GetSection("Jwt");
+builder.Services.Configure<JwtSettings>(jwtSettings);
+
+var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"]!);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            return Task.CompletedTask;
+        }
+    };
+});
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddControllers();
 
 // =========================
@@ -38,6 +76,31 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "TeamChat API",
         Version = "v1"
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Enter token with format: Bearer {token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
     });
 });
 

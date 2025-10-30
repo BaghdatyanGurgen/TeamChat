@@ -8,6 +8,9 @@ public class Chat
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public User Owner { get; set; } = null!;
+
+    public int CompanyId { get; set; }
+    public Company Company { get; set; } = null!;
     public ICollection<ChatMember> Members { get; set; } = [];
     public ICollection<ChatRole> Roles { get; set; } = [];
     public ICollection<Message> Messages { get; set; } = [];
