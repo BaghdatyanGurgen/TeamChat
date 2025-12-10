@@ -8,6 +8,14 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Google.Protobuf" Version="3.33.2" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.76.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -20,8 +28,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TeamChat.Application\TeamChat.Application.csproj" />
+    <ProjectReference Include="..\TeamChat.Contracts.Grpc\TeamChat.Contracts.Grpc.csproj" />
     <ProjectReference Include="..\TeamChat.Domain\TeamChat.Domain.csproj" />
     <ProjectReference Include="..\TeamChat.Messaging.Contracts\TeamChat.Messaging.Contracts.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<Protobuf Include="..\TeamChat.Contracts.Grpc\Protos\FileService.proto" GrpcServices="Client" ProtoRoot="..\TeamChat.Contracts.Grpc\Protos" />
+	</ItemGroup>
 </Project>

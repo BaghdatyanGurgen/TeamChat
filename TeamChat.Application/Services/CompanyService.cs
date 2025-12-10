@@ -1,121 +1,142 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TeamChat.Application.Abstraction.Infrastructure.Messaging;
+﻿using TeamChat.Application.Abstraction.Infrastructure.File;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 using TeamChat.Application.Abstraction.Services;
 using TeamChat.Application.DTOs;
 using TeamChat.Application.DTOs.Company;
+using TeamChat.Application.DTOs.CompanyUser;
 using TeamChat.Domain.Entities;
 using TeamChat.Domain.Enums;
-using TeamChat.Messaging.Contracts.Events.Company;
+using TeamChat.Domain.Models.Exceptions.Company;
 
 namespace TeamChat.Application.Services;
 
-public class CompanyService(
-    ICompanyRepository companyRepository,
-    IUserRepository userRepository,
-    IMessagePublisher messagePublisher,
-    IPositionRepository positionRepository,
-    ICompanyUserRepository companyUserRepository) : ICompanyService
+public class CompanyService(ICompanyRepository companyRepository,
+                            IDepartmentRepository deprtmentRepository,
+                            IPositionRepository positionRepository,
+                            IUserRepository userRepository,
+                            ICompanyUserRepository companyUserRepository,
+                            IFileService fileService) : ICompanyService
 {
     private readonly ICompanyRepository _companyRepository = companyRepository;
-    private readonly IUserRepository _userRepository = userRepository;
+    private readonly IFileService _fileService = fileService;
+    private readonly IDepartmentRepository _deprtmentRepository = deprtmentRepository;
     private readonly IPositionRepository _positionRepository = positionRepository;
-    private readonly IMessagePublisher _messagePublisher = messagePublisher;
+    private readonly IUserRepository _userRepository = userRepository;
     private readonly ICompanyUserRepository _companyUserRepository = companyUserRepository;
 
-    public async Task<ResponseModel<CompanyUserResponse>> AddUserToCompanyAsync(AddUserToCompanyRequest request)
-    {
-        var model = new CompanyUser
-        {
-            CompanyId = request.CompanyId,
-            UserId = request.UserId,
-            PositionId = request.PositionId,
-            JoinedAt = DateTime.UtcNow,
-        };
-        CompanyUser companyUser = await _companyUserRepository.Add(model);
-
-        var response = new CompanyUserResponse(companyUser);
-
-        var mqEvent = new UserAddedEvent(new UserAddedEventPayload(request.CompanyId, request.UserId, request.PositionId));
-
-        await _messagePublisher.PublishAsync(mqEvent);
-
-        return ResponseModel<CompanyUserResponse>.Success(response);
-    }
-
-    public Task<bool> CheckPermissionAsync(CheckPermissionRequest request)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<ResponseModel<CompanyResponse>> CreateCompanyAsync(CreateCompanyRequest request)
+    public async Task<ResponseModel<CompanyResponse>> CreateCompanyAsync(Guid directorId, CreateCompanyRequest request)
     {
         var company = new Company
         {
             Name = request.Name,
-            DirectorId = request.DirectorId
+            DirectorId = directorId,
         };
-        var result = await _companyRepository.AddAsync(company);
-        return ResponseModel<CompanyResponse>.Success(new CompanyResponse(result));
-    }
 
-    public async Task<ResponseModel<PositionResponse>> CreatePositionAsync(CreatePositionRequest request)
-    {
-        var company = await _companyRepository.GetByIdAsync(request.CompanyId);
+        var createdCompany = await _companyRepository.AddAsync(company);
 
-        if (company == null)
-            return ResponseModel<PositionResponse>.Fail("Company not found");
-
-        var position = new Position
+        var directorPosition = await _positionRepository.AddAsync(new Position
         {
-            CompanyId = request.CompanyId,
-            Company = company,
-            CreatedByUserId = request.AdminUserId,
+            CompanyId = createdCompany.Id,
+            CreatedByUserId = directorId,
+            Title = "Director",
+            Permissions = PositionPermissions.All
+        }) ?? throw new Exception("Cannot create director position");
+
+        var companyMember = await _companyUserRepository.AddAsync(new CompanyUser
+        {
+            UserId = directorId,
+            CompanyId = createdCompany.Id,
+            PositionId = directorPosition.Id,
+            JoinedAt = DateTime.UtcNow,
+            IsActive = true
+        });
+
+        return ResponseModel<CompanyResponse>.Success(new CompanyResponse(createdCompany));
+    }
+    public async Task<ResponseModel<SetCompanyDetailsResponse>> SetCompanyDetailsAsync(int companyId, SetCompanyDetailsRequest request)
+    {
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        if (company == null)
+            return ResponseModel<SetCompanyDetailsResponse>.Fail("Company not found");
+
+        string? logoUrl = null;
+
+        if (request.LogoFile != null)
+        {
+            logoUrl = await _fileService.UploadFileAsync(
+                request.LogoFile,
+                $"companies/{company.Id}"
+            );
+        }
+
+        company.Description = request.Description;
+
+        if (logoUrl != null)
+            company.LogoUrl = logoUrl;
+
+        await _companyRepository.UpdateAsync(company);
+
+        return ResponseModel<SetCompanyDetailsResponse>.Success(new SetCompanyDetailsResponse(company.Id, company.Name, company.Description, company.LogoUrl));
+    }
+    public async Task<ResponseModel<CreateCompanyDepartmentResponse>> CreateCompanyDepartmentAsync(Guid userId, int companyId, CreateCompanyDepartmentRequest request)
+    {
+        var userCompany = await _companyUserRepository.GetByUserAndCompany(userId, companyId) ?? throw new CompanyUserNotFoundException();
+
+        if ((userCompany.Position.Permissions & PositionPermissions.CreateDepartment) == 0)
+            throw new NoAccessException();
+
+        var department = await _deprtmentRepository.AddAsync(new Department
+        {
+            Name = request.Name,
+            Description = request.Description,
+            CompanyId = companyId
+        }) ?? throw new CannotCreatePossitionException();
+
+        var position = await CreateCompanyPositionAsync(userCompany, 
+                                                        companyId, 
+                                                        new CreateCompanyPositionRequest(request.Name + "Head", 
+                                                                                         PositionPermissions.CreateChat | PositionPermissions.CreatePosition));
+
+        var result = new CreateCompanyDepartmentResponse(department);
+
+        return ResponseModel<CreateCompanyDepartmentResponse>.Success(result);
+    }
+
+    public async Task<ResponseModel<CreateCompanyPositionResponse>> CreateCompanyPositionAsync(CompanyUser? user, int companyId, CreateCompanyPositionRequest request)
+    {
+        if (user is null)
+            throw new CompanyUserNotFoundException();
+
+        if ((user.Position.Permissions & PositionPermissions.CreatePosition) == 0)
+            throw new NoAccessException();
+
+        var company = user.Company;
+
+        if (company.DirectorId != user.UserId)
+            throw new NoAccessException();
+
+        var department = await _positionRepository.AddAsync(new Position
+        {
+            CompanyId = companyId,
+            CreatedByUserId = user.UserId,
             Title = request.Title,
-            Permissions = request.Permissions.Aggregate(PositionPermissions.None, (acc, p) => acc | p),
-            InviteCode = GenerateInviteCode()
-        };
+            InviteCode = GenerateInviteCode(),
+            Permissions = request.Permissions,
+            ParentPositionId = user.PositionId
+        }) ?? throw new CannotCreatePossitionException();
 
-        _positionRepository.AddAsync(position);
+        var result = new CreateCompanyPositionResponse(department);
 
-
-        return ResponseModel<PositionResponse>.Success(new PositionResponse(position));
+        return ResponseModel<CreateCompanyPositionResponse>.Success(result);
     }
-
-    public async Task<ResponseModel> DeactivateUserAsync(DeactivateUserRequest request)
+    public async Task<ResponseModel<CompanyUserResponse>> GetCompanyUserByUserIdAsync(Guid userId, int companyId)
     {
-        var isDeactivated = await _userRepository.DeactivateUserInCompanyAsync(request.UserId, request.CompanyId);
+        var companyUser = await _companyUserRepository.GetByUserAndCompany(userId, companyId);
 
-        if (!isDeactivated)
-            return ResponseModel.Fail("User deactivation failed");
-
-        return ResponseModel.Success("Account is diactivated");
+        return companyUser is null
+            ? throw new CompanyUserNotFoundException()
+            : ResponseModel<CompanyUserResponse>.Success(new CompanyUserResponse(companyUser));
     }
 
-    public Task<ResponseModel> DeletePositionAsync(DeletePositionRequest request)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<ResponseModel<NullableCompanyResponse>> GetByIdAsync(CompanyByIdRequest request)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<ResponseModel<GetUserCompaniesResponse>> GetUserCompaniesAsync(UserCompaniesRequest request)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<ResponseModel<CompanyResponse>> UpdateCompanyAsync(UpdateCompanyRequest request)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<ResponseModel<PositionResponse>> UpdatePositionAsync(UpdatePositionRequest request)
-    {
-        throw new NotImplementedException();
-    }
     private static string GenerateInviteCode() => Guid.NewGuid().ToString("N")[..8].ToUpper();
-
 }

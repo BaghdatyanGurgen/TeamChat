@@ -47,7 +47,7 @@ public class UserService(IUserRepository userRepository, IEmailSender emailSende
         return ResponseModel<RegisterEmailResponse>.Success(response, "Mail send");
     }
 
-    public async Task<ResponseModel<VerifyEmailResponse>> VerifyEmailAsync(VerivyEmailRequest request)
+    public async Task<ResponseModel<VerifyEmailResponse>> VerifyEmailAsync(VerifyEmailRequest request)
     {
         var user = await _userRepository.GetByIdAsync(request.UserId)
             ?? throw new UserNotFoundException();
@@ -101,7 +101,7 @@ public class UserService(IUserRepository userRepository, IEmailSender emailSende
         throw new NotImplementedException();
     }
 
-    public async Task<ResponseModel<AuthoResponse>> LoginAsync(LoginRequest request)
+    public async Task<ResponseModel<AuthResponse>> LoginAsync(LoginRequest request)
     {
         if (!UserValidation.IsValidEmail(request.Email))
             throw new InvalidEmailException();
@@ -115,8 +115,31 @@ public class UserService(IUserRepository userRepository, IEmailSender emailSende
         var refreshToken = await _refreshTokenService.CreateAsync(user.Id);
 
         var profile = new UserProfileResponse(user.Id, user.Email, user.FirstName, user.LastName, user.AvatarUrl, user.CreatedAt);
-        var response = new AuthoResponse(profile, jwtToken, refreshToken.PlainToken);
+        var response = new AuthResponse(profile, jwtToken, refreshToken.PlainToken);
 
-        return ResponseModel<AuthoResponse>.Success(response);
+        return ResponseModel<AuthResponse>.Success(response);
     }
+    public async Task<ResponseModel<AuthResponse>> RefreshTokenAsync(string token, string refreshToken)
+    {
+        var userId = await _refreshTokenService.ValidateAsync(token, refreshToken);
+        if (userId == Guid.Empty)
+            return ResponseModel<AuthResponse>.Fail("Invalid token");
+
+        var user = await _userRepository.GetByIdAsync(userId) ?? throw new UserNotFoundException();
+        var newJwtToken = _jwtTokenService.GenerateToken(user);
+        var newRefreshToken = await _refreshTokenService.CreateAsync(user.Id);
+
+        var profile = new UserProfileResponse(user.Id, user.Email, user.FirstName, user.LastName, user.AvatarUrl, user.CreatedAt);
+        var response = new AuthResponse(profile, newJwtToken, newRefreshToken.PlainToken);
+
+        return ResponseModel<AuthResponse>.Success(response);
+    }
+
+    public async Task<ResponseModel<string>> LogoutAsync(Guid userGuidId)
+    {
+        await _refreshTokenService.RevokeAsync(userGuidId);
+        return ResponseModel<string>.Success("Logged out successfully");
+    }
+
+
 }

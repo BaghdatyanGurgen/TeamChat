@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using TeamChat.Infrastructure.RabbitMQ;
 using TeamChat.Application.Abstraction.Infrastructure.Messaging;
 using TeamChat.Messaging.Contracts.Events;
+using TeamChat.Messaging.Contracts.Payload;
 
 namespace TeamChat.Infrastructure.Messaging;
 
@@ -21,7 +22,7 @@ public class RabbitMqPublisher : IMessagePublisher
         {
             HostName = optionsValue.Host,
             UserName = optionsValue.Username,
-            Password = optionsValue.Host,
+            Password = optionsValue.Password,
             Port = optionsValue.Port
         };
     }
@@ -32,20 +33,31 @@ public class RabbitMqPublisher : IMessagePublisher
         _channel = await _connection.CreateChannelAsync();
     }
 
-    public async Task PublishAsync<T>(T mqEvent) where T : Event
+    public async Task PublishAsync<TPayload>(Event<TPayload> mqEvent) where TPayload : BasePayload
     {
-        await PublishAsync(mqEvent.EventName, mqEvent);
+        if (_channel is null)
+        {
+            await InitializeAsync();
+        }
+        await PublishAsync(mqEvent.EventName, mqEvent.Payload);
     }
 
 
-    private async Task PublishAsync(string routingKey, Event message) 
+    private async Task PublishAsync<TPayload>(string routingKey, TPayload message) where TPayload : BasePayload
     {
         if (_channel == null)
             throw new InvalidOperationException("RabbitMQ channel is not initialized. Call InitializeAsync() first.");
 
         await _channel.QueueDeclareAsync(routingKey, durable: true, exclusive: false, autoDelete: false, arguments: null);
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false,
+        };
 
-        var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+        var a = JsonSerializer.Serialize((object)message,options);
+        Console.WriteLine(a);
+        var body = Encoding.UTF8.GetBytes(a);
 
         await _channel.BasicPublishAsync(
             exchange: "",

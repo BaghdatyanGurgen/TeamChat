@@ -3,19 +3,22 @@ using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using TeamChat.Domain.Models.Exceptions.User;
 using TeamChat.Domain.Models.Exceptions.Company;
+using TeamChat.Infrastructure.Persistance.Repositories.Base;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
-internal class CompanyUserRepository(AppDbContext context) : ICompanyUserRepository
+internal class CompanyUserRepository : BasicRepository<CompanyUser, Guid>, ICompanyUserRepository
 {
-    private readonly AppDbContext _context = context;
-    public async Task<CompanyUser> Add(CompanyUser companyUserModel)
-    {
-        var company = _context.Companies.FirstOrDefaultAsync(company => company.Id == companyUserModel.CompanyId) ?? throw new UserNotFoundException();
-        var user = _context.Users.FirstOrDefaultAsync(user => user.Id == companyUserModel.UserId) ?? throw new CompanyNotFoundException();
+    public CompanyUserRepository(AppDbContext context) : base(context) { }
 
-        await _context.CompanyUsers.AddAsync(companyUserModel);
-        await _context.SaveChangesAsync();
-        return companyUserModel;
+    public Task<CompanyUser?> GetByUserAndCompany(Guid userId, int companyId)
+    {
+        var result = _dbSet
+            .Include(cu => cu.User)
+            .Include(cu => cu.Company)
+            .Include(cu => cu.Position)
+            .FirstOrDefaultAsync(cu => cu.UserId == userId && cu.CompanyId == companyId);
+
+        return result;
     }
 }

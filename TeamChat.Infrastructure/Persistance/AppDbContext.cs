@@ -11,12 +11,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ChatRole> ChatRoles => Set<ChatRole>();
     public DbSet<ChatMemberRole> ChatMemberRoles => Set<ChatMemberRole>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<DepartmentMember> DepartmentMembers => Set<DepartmentMember>();
     public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
     public DbSet<MessageReadStatus> MessageReadStatuses => Set<MessageReadStatus>();
     public DbSet<UserRefreshToken> UserRefreshTokens => Set<UserRefreshToken>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Position> Positions => Set<Position>();
     public DbSet<CompanyUser> CompanyUsers => Set<CompanyUser>();
+    public DbSet<Team> Teams => Set<Team>();
+    public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

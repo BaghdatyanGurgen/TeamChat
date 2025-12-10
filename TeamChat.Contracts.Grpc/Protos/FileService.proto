@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option csharp_namespace = "TeamChat.Contracts.Grpc";
+
+package files;
+
+service FileService {
+  rpc UploadFile (UploadFileRequest) returns (UploadFileResponse);
+}
+
+message UploadFileRequest {
+  string fileName = 1;
+  string folder = 2;
+  bytes content = 3;
+}
+
+message UploadFileResponse {
+  string url = 1;
+}

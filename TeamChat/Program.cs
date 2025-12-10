@@ -1,28 +1,25 @@
-﻿using System.Text;
-using TeamChat.Application;
-using TeamChat.Infrastructure;
-using Microsoft.OpenApi.Models;
-using TeamChat.Infrastructure.Email;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using TeamChat.API.Swagger;
+using TeamChat.Application;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Infrastructure;
+using TeamChat.Infrastructure.Email;
 using TeamChat.Infrastructure.RabbitMQ;
 using TeamChat.Infrastructure.Security.Jwt;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
-// =========================
-// DEPENDENCY INJECTION
-// =========================
+
 builder.Services.AddApplication();
 builder.Services.AddAllInfrastructure(configuration);
 
 builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<RabbitMQSettings>(configuration.GetSection("RabbitMq"));
 
-// =========================
-// JWT AUTHENTICATION
-// =========================
 var jwtSettings = configuration.GetSection("Jwt");
 builder.Services.Configure<JwtSettings>(jwtSettings);
 
@@ -66,9 +63,6 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
 
-// =========================
-// SWAGGER
-// =========================
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -102,15 +96,15 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
+
+    c.OperationFilter<FileUploadOperationFilter>();
 });
 
-// =========================
-// APP PIPELINE
-// =========================
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }

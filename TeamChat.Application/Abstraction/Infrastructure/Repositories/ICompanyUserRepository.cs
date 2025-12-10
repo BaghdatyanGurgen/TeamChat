@@ -1,8 +1,9 @@
-﻿using TeamChat.Domain.Entities;
+﻿using TeamChat.Application.Abstraction.Infrastructure.Repositories.Base;
+using TeamChat.Domain.Entities;
 
 namespace TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
-public interface ICompanyUserRepository
+public interface ICompanyUserRepository : IBasicRepository<CompanyUser, Guid>
 {
-    Task<CompanyUser> Add(CompanyUser model);
+    Task<CompanyUser?> GetByUserAndCompany(Guid userId, int companyId);
 }

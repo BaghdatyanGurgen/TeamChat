@@ -1,28 +1,27 @@
 ﻿using TeamChat.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Infrastructure.Persistance.Repositories.Base;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
-public class MessageRepository(AppDbContext context) : IMessageRepository
+public class MessageRepository : BasicRepository<Message, Guid>, IMessageRepository
 {
-    private readonly AppDbContext _context = context;
+    public MessageRepository(AppDbContext context) : base(context) { }
 
-    public async Task<Message?> GetByIdAsync(Guid id) =>
-        await _context.Messages.Include(m => m.ReadStatuses).Include(m => m.Attachments).FirstOrDefaultAsync(m => m.Id == id);
-
-    public async Task AddAsync(Message message)
+    public override async Task<Message?> GetByIdAsync(Guid id)
     {
-        await _context.Messages.AddAsync(message);
-        await _context.SaveChangesAsync();
+        return await _context.Messages
+                             .Include(m => m.ReadStatuses)
+                             .Include(m => m.Attachments)
+                             .FirstOrDefaultAsync(m => m.Id == id);
     }
 
-    public async Task<List<Message>> GetChatMessagesAsync(Guid chatId) =>
-        await _context.Messages.Where(m => m.ChatId == chatId).Include(m => m.Attachments).ToListAsync();
-
-    public async Task UpdateAsync(Message message)
+    public async Task<List<Message>> GetMessagesForChatAsync(Guid chatId)
     {
-        _context.Messages.Update(message);
-        await _context.SaveChangesAsync();
+        return await _context.Messages
+                             .Where(m => m.ChatId == chatId)
+                             .Include(m => m.Attachments)
+                             .ToListAsync();
     }
 }

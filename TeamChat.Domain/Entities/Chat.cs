@@ -6,6 +6,11 @@ public class Chat
     public string Name { get; set; } = string.Empty;
     public Guid OwnerId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public int? DepartmentId { get; set; }
+    public Department? Department { get; set; }
+
+    public int? TeamId { get; set; }
+    public Team? Team { get; set; }
 
     public User Owner { get; set; } = null!;
 

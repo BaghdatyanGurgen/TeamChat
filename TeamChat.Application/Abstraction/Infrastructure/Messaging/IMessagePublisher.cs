@@ -1,9 +1,9 @@
 ﻿using TeamChat.Messaging.Contracts.Events;
+using TeamChat.Messaging.Contracts.Payload;
 
-namespace TeamChat.Application.Abstraction.Infrastructure.Messaging
+namespace TeamChat.Application.Abstraction.Infrastructure.Messaging;
+
+public interface IMessagePublisher : IDisposable
 {
-    public interface IMessagePublisher : IDisposable
-    {
-        Task PublishAsync<T>(T mqEvent) where T : Event;
-    }
+    Task PublishAsync<TPayload>(Event<TPayload> mqEvent) where TPayload : BasePayload;
 }

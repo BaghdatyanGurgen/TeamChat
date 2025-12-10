@@ -1,3 +1,3 @@
 ﻿namespace TeamChat.Messaging.Contracts.Payload;
 
-public record BasePayload();
+public abstract class BasePayload();

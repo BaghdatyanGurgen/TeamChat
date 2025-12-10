@@ -1,11 +1,9 @@
-﻿using TeamChat.Domain.Entities;
+﻿using TeamChat.Application.Abstraction.Infrastructure.Repositories.Base;
+using TeamChat.Domain.Entities;
 
 namespace TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
-public interface IChatRepository
+public interface IChatRepository: IBasicRepository<Chat, Guid>
 {
-    Task<Chat?> GetByIdAsync(Guid id);
-    Task AddAsync(Chat chat);
-    Task UpdateAsync(Chat chat);
     Task<List<Chat>> GetUserChatsAsync(Guid userId);
 }

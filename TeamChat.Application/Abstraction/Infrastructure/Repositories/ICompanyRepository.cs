@@ -1,14 +1,9 @@
-﻿using TeamChat.Domain.Entities;
+﻿using TeamChat.Application.Abstraction.Infrastructure.Repositories.Base;
+using TeamChat.Domain.Entities;
 
 namespace TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
-public interface ICompanyRepository
+public interface ICompanyRepository : IBasicRepository<Company, int>
 {
-    Task<Company?> GetByIdAsync(int id);
-    Task<IEnumerable<Company>> GetAllAsync();
-    Task<Company> AddAsync(Company company);
-    Task Update(Company company);
-    Task Remove(Company company);
-    Task<bool> ExistsAsync(int id);
-    Task SaveChangesAsync();
+    Task<IEnumerable<CompanyUser>> GetEmployeesAsync(int companyId);
 }

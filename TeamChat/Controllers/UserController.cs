@@ -1,7 +1,5 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using TeamChat.Application.DTOs;
-using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using TeamChat.Application.DTOs.User;
 using TeamChat.Application.Abstraction.Services;
@@ -11,43 +9,93 @@ namespace TeamChat.API.Controllers;
 
 [ApiController]
 [Route("api/user")]
-public class UserController(IUserService userService) : ControllerBase
+public class UserController : ControllerBase
 {
-    private readonly IUserService _userService = userService;
+    private readonly IUserService _userService;
 
-    /// <summary>
-    /// Creates a draft user
-    /// </summary>
-    [HttpPost("create-draft")]
-    public async Task<ResponseModel<RegisterEmailResponse>> CreateDraftUser([FromBody] CreateDraftUserRequest request)
-        => await _userService.CreateDraftUserAsync(request);
-
-    /// <summary>
-    /// Confirms user's email address
-    /// </summary>
-    [HttpPost("verify-email")]
-    public async Task<ResponseModel<VerifyEmailResponse>> VerifyEmail([FromBody] VerivyEmailRequest request)
-         => await _userService.VerifyEmailAsync(request);
-
-    /// <summary>
-    /// Completes user registration by setting a password
-    /// </summary>
-    [HttpPost("set-password")]
-    public async Task<ResponseModel<SetPasswordResponse>> SetPassword([FromBody] SetPasswordRequest request)
-        => await _userService.SetPasswordAsync(request);
-
-    /// <summary>
-    /// Sets user profile information
-    /// </summary>
-    [Authorize]
-    [HttpGet("set-user-profile")]
-    public async Task<ResponseModel<UserProfileResponse>> SetUserProfile([FromQuery] SetUserProfileRequest request)
+    public UserController(IUserService userService)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        _userService = userService;
+    }
 
+    [HttpPost("create-draft")]
+    public async Task<IActionResult> CreateDraftUser([FromBody] CreateDraftUserRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _userService.CreateDraftUserAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _userService.VerifyEmailAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("set-password")]
+    public async Task<IActionResult> SetPassword([FromBody] SetPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _userService.SetPasswordAsync(request);
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPatch("set-user-profile")]
+    public async Task<IActionResult> SetUserProfile([FromBody] SetUserProfileRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userId, out var userGuidId))
             throw new UserNotFoundException();
 
-        return await _userService.SetUserProfileAsync(userGuidId, request);
+        var result = await _userService.SetUserProfileAsync(userGuidId, request);
+        return Ok(result);
     }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _userService.LoginAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _userService.RefreshTokenAsync(request.Token, request.RefreshToken);
+        if (!result.IsSuccess)
+            return Unauthorized(result.Message);
+
+        return Ok(result.Data);
+    }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userId, out var userGuidId))
+            throw new UserNotFoundException();
+
+        await _userService.LogoutAsync(userGuidId);
+        return Ok(new { Message = "Logged out successfully" });
+    }
+
 }

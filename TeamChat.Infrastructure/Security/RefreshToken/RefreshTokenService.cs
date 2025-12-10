@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using TeamChat.Domain;
 using TeamChat.Domain.Entities;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +56,27 @@ public class RefreshTokenService(AppDbContext db) : IRefreshTokenService
         await _db.SaveChangesAsync();
         return true;
     }
+    public async Task<Guid> ValidateAsync(string token, string refreshToken)
+    {
+        var existingToken = await GetValidTokenAsync(refreshToken);
+        if (existingToken == null || existingToken.UserId.ToString() != token)
+            return Guid.Empty;
+
+        return existingToken.UserId;
+    }
+
+    public async Task RevokeAsync(Guid userId)
+    {
+        var tokens = await _db.UserRefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null)
+            .ToListAsync();
+
+        foreach (var t in tokens)
+            t.RevokedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+    }
+
 
     private static string GenerateRefreshToken()
     {

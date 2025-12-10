@@ -1,57 +1,66 @@
-﻿using TeamChat.Domain;
-using TeamChat.Infrastructure.Email;
+﻿//using TeamChat.Infrastructure.File;
 using Microsoft.EntityFrameworkCore;
-using TeamChat.Infrastructure.Messaging;
 using Microsoft.Extensions.Configuration;
-using TeamChat.Infrastructure.Security.Jwt;
 using Microsoft.Extensions.DependencyInjection;
-using TeamChat.Infrastructure.Security.RefreshToken;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
-using TeamChat.Application.Abstraction.Infrastructure.Messaging;
-using TeamChat.Application.Abstraction.Infrastructure.Security;
-using TeamChat.Infrastructure.Persistance.Repositories;
 using TeamChat.Application.Abstraction.Infrastructure.Email;
+using TeamChat.Application.Abstraction.Infrastructure.File;
+using TeamChat.Application.Abstraction.Infrastructure.Messaging;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Application.Abstraction.Infrastructure.Security;
+using TeamChat.Contracts.Grpc;
+using TeamChat.Infrastructure.Email;
+using TeamChat.Infrastructure.File;
+using TeamChat.Infrastructure.Messaging;
 using TeamChat.Infrastructure.Persistance;
+using TeamChat.Infrastructure.Persistance.Repositories;
+using TeamChat.Infrastructure.Security.Jwt;
+using TeamChat.Infrastructure.Security.RefreshToken;
 
 namespace TeamChat.Infrastructure
 {
     public static class DependencyInjection
     {
         public static IServiceCollection AddPersistanceInfrastructure(this IServiceCollection services, IConfiguration configuration)
-        {
-            services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
-
-            services.AddScoped<IUserRepository, UserRepository>();
-            services.AddScoped<ICompanyRepository, CompanyRepository>();
-            services.AddScoped<ICompanyUserRepository, CompanyUserRepository>();
-
-            return services;
-        }
+            => services.AddDbContext<AppDbContext>(options =>
+                    options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")))
+                       .AddScoped<IUserRepository, UserRepository>()
+                       .AddScoped<ICompanyRepository, CompanyRepository>()
+                       .AddScoped<ICompanyUserRepository, CompanyUserRepository>()
+                       .AddScoped<IPositionRepository, PositionRepository>()
+                       .AddScoped<IChatRepository, ChatRepository>()
+                       .AddScoped<IChatMemberRepository, ChatMemberRepository>()
+                       .AddScoped<ITeamRepository, TeamRepository>()
+                       .AddScoped<IMessageRepository, MessageRepository>()
+                       .AddScoped<IDepartmentRepository, DepartmentRepository>();
 
         public static IServiceCollection AddMessagingInfrastructure(this IServiceCollection services)
-        {
-            services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
-            return services;
-        }
+            => services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+
         public static IServiceCollection AddEmailInfrastructure(this IServiceCollection services)
-        {
-            services.AddScoped<IEmailSender, SmtpEmailSender>();
-            return services;
-        }
+            => services.AddScoped<IEmailSender, SmtpEmailSender>();
+
+
         public static IServiceCollection AddSecurityInfrastructure(this IServiceCollection services)
+            => services.AddScoped<IJwtTokenService, JwtTokenService>()
+                       .AddScoped<IRefreshTokenService, RefreshTokenService>();
+
+        public static IServiceCollection AddFileInfrestructure(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddScoped<IJwtTokenService, JwtTokenService>();
-            services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+            services.AddGrpcClient<FileService.FileServiceClient>(o =>
+            {
+                o.Address = new Uri(configuration["FileServiceUrl"]!);
+            });
+
+            services.AddScoped<IFileService, GrpcFileServiceAdapter>();
             return services;
+
         }
+
         public static IServiceCollection AddAllInfrastructure(this IServiceCollection services, IConfiguration configuration)
-        {
-            services.AddPersistanceInfrastructure(configuration);
-            services.AddMessagingInfrastructure();
-            services.AddEmailInfrastructure();
-            services.AddSecurityInfrastructure();
-            return services;
-        }
+            => services.AddPersistanceInfrastructure(configuration)
+                       .AddMessagingInfrastructure()
+                       .AddEmailInfrastructure()
+                       .AddSecurityInfrastructure()
+                       .AddFileInfrestructure(configuration);
     }
 }
