@@ -2,24 +2,23 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace TeamChat.Infrastructure.Persistance.Configurations
+namespace TeamChat.Infrastructure.Persistance.Configurations;
+
+public class ChatRoleConfiguration : IEntityTypeConfiguration<ChatRole>
 {
-    public class ChatRoleConfiguration : IEntityTypeConfiguration<ChatRole>
+    public void Configure(EntityTypeBuilder<ChatRole> builder)
     {
-        public void Configure(EntityTypeBuilder<ChatRole> builder)
-        {
-            builder.HasKey(r => r.Id);
-            builder.Property(r => r.Name).IsRequired();
+        builder.HasKey(r => r.Id);
+        builder.Property(r => r.Name).IsRequired();
 
-            builder.HasOne(r => r.Chat)
-                   .WithMany(c => c.Roles)
-                   .HasForeignKey(r => r.ChatId);
+        builder.HasOne(r => r.Chat)
+               .WithMany(c => c.Roles)
+               .HasForeignKey(r => r.ChatId);
 
-            builder.HasMany(r => r.MemberRoles)
-                   .WithOne(mr => mr.ChatRole)
-                   .HasForeignKey(mr => mr.ChatRoleId);
+        builder.HasMany(r => r.MemberRoles)
+               .WithOne(mr => mr.ChatRole)
+               .HasForeignKey(mr => mr.ChatRoleId);
 
-            builder.HasIndex(r => new { r.ChatId, r.Name }).IsUnique();
-        }
+        builder.HasIndex(r => new { r.ChatId, r.Name }).IsUnique();
     }
 }

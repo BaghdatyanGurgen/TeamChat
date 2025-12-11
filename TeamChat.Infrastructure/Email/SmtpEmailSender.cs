@@ -22,7 +22,6 @@ public class SmtpEmailSender(IOptions<SmtpSettings> options, IConfiguration conf
         return $"{frontendUrl}/verify-email?userId={userId}&token={encodedToken}";
     }
 
-
     public async Task SendEmailAsync(string? to, string subject, string htmlMessage)
     {
         if (string.IsNullOrEmpty(to))

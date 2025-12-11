@@ -1,24 +1,24 @@
 ﻿using TeamChat.Domain.Entities;
 using TeamChat.Application.DTOs;
-using TeamChat.Application.Validation;
 using TeamChat.Application.DTOs.User;
-using TeamChat.Domain.Models.Exceptions.User;
+using TeamChat.Application.Validation;
 using TeamChat.Application.Abstraction.Services;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
-using TeamChat.Application.Abstraction.Infrastructure.Security;
 using TeamChat.Application.Abstraction.Infrastructure.Email;
+using TeamChat.Application.Abstraction.Infrastructure.Security;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Domain.Models.Exceptions;
 
 namespace TeamChat.Application.Services;
 
-public class UserService(IUserRepository userRepository, IEmailSender emailSender,
-                         IRefreshTokenService refreshTokenService, IJwtTokenService jwtTokenService)
-    : IUserService
+public class UserService(IUserRepository userRepository,
+                         IEmailSender emailSender,
+                         IRefreshTokenService refreshTokenService,
+                         IJwtTokenService jwtTokenService) : IUserService
 {
     private readonly IEmailSender _emailSender = emailSender;
     private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
-
-    private readonly IUserRepository _userRepository = userRepository;
     private readonly IJwtTokenService _jwtTokenService = jwtTokenService;
+    private readonly IUserRepository _userRepository = userRepository;
 
     public async Task<ResponseModel<RegisterEmailResponse>> CreateDraftUserAsync(CreateDraftUserRequest request)
     {
@@ -96,11 +96,6 @@ public class UserService(IUserRepository userRepository, IEmailSender emailSende
         return ResponseModel<UserProfileResponse>.Success(response);
     }
 
-    public Task<ResponseModel<UserProfileResponse>> SetUserProfileAsync(SetUserProfileRequest request)
-    {
-        throw new NotImplementedException();
-    }
-
     public async Task<ResponseModel<AuthResponse>> LoginAsync(LoginRequest request)
     {
         if (!UserValidation.IsValidEmail(request.Email))
@@ -119,6 +114,7 @@ public class UserService(IUserRepository userRepository, IEmailSender emailSende
 
         return ResponseModel<AuthResponse>.Success(response);
     }
+    
     public async Task<ResponseModel<AuthResponse>> RefreshTokenAsync(string token, string refreshToken)
     {
         var userId = await _refreshTokenService.ValidateAsync(token, refreshToken);
@@ -140,6 +136,4 @@ public class UserService(IUserRepository userRepository, IEmailSender emailSende
         await _refreshTokenService.RevokeAsync(userGuidId);
         return ResponseModel<string>.Success("Logged out successfully");
     }
-
-
 }

@@ -1,4 +1,6 @@
-﻿namespace TeamChat.Application.Validation;
+﻿using System.Net.Mail;
+
+namespace TeamChat.Application.Validation;
 
 public static class UserValidation
 {
@@ -6,7 +8,7 @@ public static class UserValidation
     {
         try
         {
-            var addr = new System.Net.Mail.MailAddress(email);
+            var addr = new MailAddress(email);
             return addr.Address == email;
         }
         catch

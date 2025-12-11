@@ -1,15 +1,14 @@
-﻿using TeamChat.Domain.Entities;
-using TeamChat.Domain.Enums;
+﻿using TeamChat.Domain.Enums;
+using TeamChat.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 using TeamChat.Infrastructure.Persistance.Repositories.Base;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
-public class PositionRepository : BasicRepository<Position, int>, IPositionRepository
+public class PositionRepository(AppDbContext context)
+        : BasicRepository<Position, int>(context), IPositionRepository
 {
-    public PositionRepository(AppDbContext context) : base(context) { }
-
     public async Task<bool> CanCreateChat(Guid ownerId, int companyId)
     {
         var companyUser = await _context.CompanyUsers

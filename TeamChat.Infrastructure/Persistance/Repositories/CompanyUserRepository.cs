@@ -1,16 +1,13 @@
 ﻿using TeamChat.Domain.Entities;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
-using TeamChat.Domain.Models.Exceptions.User;
-using TeamChat.Domain.Models.Exceptions.Company;
 using TeamChat.Infrastructure.Persistance.Repositories.Base;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
-internal class CompanyUserRepository : BasicRepository<CompanyUser, Guid>, ICompanyUserRepository
+internal class CompanyUserRepository(AppDbContext context) 
+    : BasicRepository<CompanyUser, Guid>(context), ICompanyUserRepository
 {
-    public CompanyUserRepository(AppDbContext context) : base(context) { }
-
     public Task<CompanyUser?> GetByUserAndCompany(Guid userId, int companyId)
     {
         var result = _dbSet

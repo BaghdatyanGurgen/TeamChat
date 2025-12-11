@@ -1,14 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
-using TeamChat.Domain.Entities;
-using TeamChat.Domain.Models.Exceptions.User;
+﻿using TeamChat.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using TeamChat.Domain.Models.Exceptions;
 using TeamChat.Infrastructure.Persistance.Repositories.Base;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
-public class UserRepository : BasicRepository<User, Guid>, IUserRepository
+public class UserRepository(AppDbContext context)
+        : BasicRepository<User, Guid>(context), IUserRepository
 {
-    public UserRepository(AppDbContext context) : base(context) { }
-
     public async Task<User?> GetByIdAsync(string? id)
     {
         if (Guid.TryParse(id, out var guidId))

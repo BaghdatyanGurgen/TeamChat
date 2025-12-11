@@ -10,8 +10,8 @@ namespace NotificationService.Services;
 
 public class RabbitMqListener : IDisposable
 {
-    private IConnection _connection;
-    private IChannel _channel;
+    private IConnection? _connection;
+    private IChannel? _channel;
     private readonly ConnectionFactory _factory;
     private readonly string _queueName;
 
@@ -40,6 +40,9 @@ public class RabbitMqListener : IDisposable
     public async Task StartListening()
     {
         await InitConnection();
+        if (_channel is null)
+            throw new Exception();
+
         var consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.ReceivedAsync += async (model, ea) =>
         {

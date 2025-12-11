@@ -1,14 +1,13 @@
 ﻿using TeamChat.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 using TeamChat.Infrastructure.Persistance.Repositories.Base;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
-public class CompanyRepository : BasicRepository<Company, int>, ICompanyRepository
+public class CompanyRepository(AppDbContext context) 
+    : BasicRepository<Company, int>(context), ICompanyRepository
 {
-    public CompanyRepository(AppDbContext context) : base(context) { }
-
     public override async Task<Company?> GetByIdAsync(int id)
     {
         return await _context.Companies
@@ -24,5 +23,4 @@ public class CompanyRepository : BasicRepository<Company, int>, ICompanyReposito
             .Where(cu => cu.CompanyId == companyId)
             .ToListAsync();
     }
-
 }

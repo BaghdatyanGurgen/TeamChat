@@ -5,10 +5,9 @@ using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
-public class TeamRepository : BasicRepository<Team, int>, ITeamRepository
+public class TeamRepository(AppDbContext db)
+        : BasicRepository<Team, int>(db), ITeamRepository
 {
-    public TeamRepository(AppDbContext db) : base(db) { }
-
     public async Task<IEnumerable<TeamMember>> GetEmployeesAsync(int id)
     {
         return await _context.TeamMembers

@@ -1,14 +1,11 @@
-﻿
+﻿using TeamChat.Domain.Entities;
+using TeamChat.Application.DTOs;
+using TeamChat.Application.DTOs.Message;
+using TeamChat.Domain.Models.Exceptions;
+using TeamChat.Messaging.Contracts.Message;
+using TeamChat.Application.Abstraction.Services;
 using TeamChat.Application.Abstraction.Infrastructure.Messaging;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
-using TeamChat.Application.Abstraction.Services;
-using TeamChat.Application.DTOs;
-using TeamChat.Application.DTOs.Chat;
-using TeamChat.Application.DTOs.Message;
-using TeamChat.Domain.Entities;
-using TeamChat.Domain.Models.Exceptions;
-using TeamChat.Domain.Models.Exceptions.Company;
-using TeamChat.Messaging.Contracts.Message;
 
 namespace TeamChat.Application.Services;
 
@@ -51,7 +48,6 @@ public class MessageService(IMessageRepository messageRepository,
 
         return ResponseModel<MessageResponse>.Success(new MessageResponse(created));
     }
-
 
     public async Task<ResponseModel<IEnumerable<MessageResponse>>> GetChatMessagesAsync(Guid userId, Guid chatId)
     {

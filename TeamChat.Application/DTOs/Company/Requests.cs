@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using TeamChat.Domain.Enums;
+﻿using TeamChat.Domain.Enums;
+using Microsoft.AspNetCore.Http;
 
 namespace TeamChat.Application.DTOs.Company;
 

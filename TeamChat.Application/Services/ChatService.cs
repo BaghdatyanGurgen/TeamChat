@@ -2,10 +2,8 @@
 using TeamChat.Domain.Entities;
 using TeamChat.Application.DTOs;
 using TeamChat.Application.DTOs.Chat;
-using TeamChat.Application.DTOs.Message;
 using TeamChat.Domain.Models.Exceptions;
 using System.ComponentModel.DataAnnotations;
-using TeamChat.Domain.Models.Exceptions.Company;
 using TeamChat.Application.Abstraction.Services;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
@@ -32,7 +30,7 @@ public class ChatService(IChatRepository chatRepository,
         if ((companyUser.Position.Permissions & PositionPermissions.CreateChat) == 0)
             throw new NoAccessException();
 
-        List<Guid> participantIds = new();
+        List<Guid> participantIds = [];
 
         switch (request.Scope)
         {
@@ -94,6 +92,4 @@ public class ChatService(IChatRepository chatRepository,
 
         return ResponseModel<ChatResponse>.Success(new ChatResponse(chat));
     }
-
-
 }

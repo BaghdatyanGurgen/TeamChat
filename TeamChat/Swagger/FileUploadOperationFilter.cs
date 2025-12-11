@@ -1,7 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using System.Linq;
 
 namespace TeamChat.API.Swagger;
 public class FileUploadOperationFilter : IOperationFilter
@@ -13,7 +11,7 @@ public class FileUploadOperationFilter : IOperationFilter
                         (p.ParameterType.IsGenericType && p.ParameterType.GetGenericArguments().Any(t => t == typeof(IFormFile))))
             .ToList();
 
-        if (!fileParams.Any())
+        if (fileParams.Count == 0)
             return;
 
         operation.Parameters.Clear();

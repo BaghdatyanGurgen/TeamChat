@@ -16,9 +16,9 @@ public class JwtTokenService(IOptions<JwtSettings> jwtSettings) : IJwtTokenServi
     {
         var claims = new[]
         {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(JwtRegisteredClaimNames.Email, user.Email ?? "")
-    };
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email ?? "")
+        };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -33,5 +33,4 @@ public class JwtTokenService(IOptions<JwtSettings> jwtSettings) : IJwtTokenServi
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
-
 }

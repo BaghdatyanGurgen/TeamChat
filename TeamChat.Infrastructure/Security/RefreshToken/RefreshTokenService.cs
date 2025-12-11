@@ -56,6 +56,7 @@ public class RefreshTokenService(AppDbContext db) : IRefreshTokenService
         await _db.SaveChangesAsync();
         return true;
     }
+
     public async Task<Guid> ValidateAsync(string token, string refreshToken)
     {
         var existingToken = await GetValidTokenAsync(refreshToken);
@@ -77,7 +78,6 @@ public class RefreshTokenService(AppDbContext db) : IRefreshTokenService
         await _db.SaveChangesAsync();
     }
 
-
     private static string GenerateRefreshToken()
     {
         var bytes = RandomNumberGenerator.GetBytes(64);
@@ -90,4 +90,3 @@ public class RefreshTokenService(AppDbContext db) : IRefreshTokenService
         return Convert.ToBase64String(bytes);
     }
 }
-

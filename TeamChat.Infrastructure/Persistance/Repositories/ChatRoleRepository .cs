@@ -1,14 +1,13 @@
 ﻿using TeamChat.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 using TeamChat.Infrastructure.Persistance.Repositories.Base;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
-public class ChatRoleRepository : BasicRepository<ChatRole, Guid>, IChatRoleRepository
+public class ChatRoleRepository(AppDbContext context)
+        : BasicRepository<ChatRole, Guid>(context), IChatRoleRepository
 {
-    public ChatRoleRepository(AppDbContext context) : base(context) { }
-
     public async Task<List<ChatRole>> GetByChatIdAsync(Guid chatId)
     {
         return await _context.ChatRoles

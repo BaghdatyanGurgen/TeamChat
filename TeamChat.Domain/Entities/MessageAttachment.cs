@@ -2,9 +2,13 @@
 
 public class MessageAttachment
 {
+    // Primary Key
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid MessageId { get; set; }
+    
+    // Properties
     public string FileUrl { get; set; } = string.Empty;
-
+    
+    // Foreign Keys
+    public Guid MessageId { get; set; }
     public Message Message { get; set; } = null!;
 }

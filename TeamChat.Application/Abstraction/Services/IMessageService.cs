@@ -1,5 +1,4 @@
 ﻿using TeamChat.Application.DTOs;
-using TeamChat.Application.DTOs.Chat;
 using TeamChat.Application.DTOs.Message;
 
 namespace TeamChat.Application.Abstraction.Services;

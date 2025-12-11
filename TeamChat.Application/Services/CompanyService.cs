@@ -1,19 +1,18 @@
-﻿using TeamChat.Application.Abstraction.Infrastructure.File;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
-using TeamChat.Application.Abstraction.Services;
+﻿using TeamChat.Domain.Enums;
+using TeamChat.Domain.Entities;
 using TeamChat.Application.DTOs;
 using TeamChat.Application.DTOs.Company;
+using TeamChat.Domain.Models.Exceptions;
 using TeamChat.Application.DTOs.CompanyUser;
-using TeamChat.Domain.Entities;
-using TeamChat.Domain.Enums;
-using TeamChat.Domain.Models.Exceptions.Company;
+using TeamChat.Application.Abstraction.Services;
+using TeamChat.Application.Abstraction.Infrastructure.File;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Application.Services;
 
 public class CompanyService(ICompanyRepository companyRepository,
                             IDepartmentRepository deprtmentRepository,
                             IPositionRepository positionRepository,
-                            IUserRepository userRepository,
                             ICompanyUserRepository companyUserRepository,
                             IFileService fileService) : ICompanyService
 {
@@ -21,7 +20,6 @@ public class CompanyService(ICompanyRepository companyRepository,
     private readonly IFileService _fileService = fileService;
     private readonly IDepartmentRepository _deprtmentRepository = deprtmentRepository;
     private readonly IPositionRepository _positionRepository = positionRepository;
-    private readonly IUserRepository _userRepository = userRepository;
     private readonly ICompanyUserRepository _companyUserRepository = companyUserRepository;
 
     public async Task<ResponseModel<CompanyResponse>> CreateCompanyAsync(Guid directorId, CreateCompanyRequest request)
@@ -42,7 +40,7 @@ public class CompanyService(ICompanyRepository companyRepository,
             Permissions = PositionPermissions.All
         }) ?? throw new Exception("Cannot create director position");
 
-        var companyMember = await _companyUserRepository.AddAsync(new CompanyUser
+        _ = await _companyUserRepository.AddAsync(new CompanyUser
         {
             UserId = directorId,
             CompanyId = createdCompany.Id,
@@ -92,25 +90,31 @@ public class CompanyService(ICompanyRepository companyRepository,
             CompanyId = companyId
         }) ?? throw new CannotCreatePossitionException();
 
-        var position = await CreateCompanyPositionAsync(userCompany, 
-                                                        companyId, 
-                                                        new CreateCompanyPositionRequest(request.Name + "Head", 
-                                                                                         PositionPermissions.CreateChat | PositionPermissions.CreatePosition));
+        var companyUserResponse = new CompanyUserResponse(userCompany);
+        
+        _ = await CreateCompanyPositionAsync(companyUserResponse,
+                                             companyId,
+                                             new CreateCompanyPositionRequest(request.Name + "Head",
+                                                                              PositionPermissions.CreateChat | PositionPermissions.CreatePosition));
 
         var result = new CreateCompanyDepartmentResponse(department);
 
         return ResponseModel<CreateCompanyDepartmentResponse>.Success(result);
     }
 
-    public async Task<ResponseModel<CreateCompanyPositionResponse>> CreateCompanyPositionAsync(CompanyUser? user, int companyId, CreateCompanyPositionRequest request)
+    public async Task<ResponseModel<CreateCompanyPositionResponse>> CreateCompanyPositionAsync(CompanyUserResponse user, int companyId, CreateCompanyPositionRequest request)
     {
         if (user is null)
             throw new CompanyUserNotFoundException();
 
-        if ((user.Position.Permissions & PositionPermissions.CreatePosition) == 0)
+        var position = await _positionRepository.GetByIdAsync(user.PositionId) 
+            ?? throw new CompanyUserNotFoundException();
+
+        if ((position.Permissions & PositionPermissions.CreatePosition) == 0)
             throw new NoAccessException();
 
-        var company = user.Company;
+        var company = await _companyRepository.GetByIdAsync(user.CompanyId)
+            ?? throw new CompanyUserNotFoundException();
 
         if (company.DirectorId != user.UserId)
             throw new NoAccessException();

@@ -1,14 +1,13 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using System.Text;
+﻿using System.Text;
 using TeamChat.API.Swagger;
 using TeamChat.Application;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 using TeamChat.Infrastructure;
+using Microsoft.OpenApi.Models;
 using TeamChat.Infrastructure.Email;
+using Microsoft.IdentityModel.Tokens;
 using TeamChat.Infrastructure.RabbitMQ;
 using TeamChat.Infrastructure.Security.Jwt;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;

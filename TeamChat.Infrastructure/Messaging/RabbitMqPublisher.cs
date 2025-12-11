@@ -3,9 +3,9 @@ using RabbitMQ.Client;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using TeamChat.Infrastructure.RabbitMQ;
-using TeamChat.Application.Abstraction.Infrastructure.Messaging;
 using TeamChat.Messaging.Contracts.Events;
 using TeamChat.Messaging.Contracts.Payload;
+using TeamChat.Application.Abstraction.Infrastructure.Messaging;
 
 namespace TeamChat.Infrastructure.Messaging;
 
@@ -36,12 +36,10 @@ public class RabbitMqPublisher : IMessagePublisher
     public async Task PublishAsync<TPayload>(Event<TPayload> mqEvent) where TPayload : BasePayload
     {
         if (_channel is null)
-        {
             await InitializeAsync();
-        }
+        
         await PublishAsync(mqEvent.EventName, mqEvent.Payload);
     }
-
 
     private async Task PublishAsync<TPayload>(string routingKey, TPayload message) where TPayload : BasePayload
     {
@@ -49,13 +47,8 @@ public class RabbitMqPublisher : IMessagePublisher
             throw new InvalidOperationException("RabbitMQ channel is not initialized. Call InitializeAsync() first.");
 
         await _channel.QueueDeclareAsync(routingKey, durable: true, exclusive: false, autoDelete: false, arguments: null);
-        var options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-        };
 
-        var a = JsonSerializer.Serialize((object)message,options);
+        var a = JsonSerializer.Serialize((object)message);
         Console.WriteLine(a);
         var body = Encoding.UTF8.GetBytes(a);
 

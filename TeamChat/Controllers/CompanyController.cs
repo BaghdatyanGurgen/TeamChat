@@ -1,19 +1,17 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using TeamChat.Application.DTOs.Company;
+using TeamChat.Domain.Models.Exceptions;
 using Microsoft.AspNetCore.Authorization;
-using TeamChat.Domain.Models.Exceptions.User;
 using TeamChat.Application.Abstraction.Services;
-using TeamChat.Application.Abstraction.Infrastructure.File;
 
 namespace TeamChat.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CompanyController(ICompanyService companyService, IFileService fileService) : ControllerBase
+public class CompanyController(ICompanyService companyService) : ControllerBase
 {
     private readonly ICompanyService _companyService = companyService;
-    private readonly IFileService _fileService = fileService;
 
     [Authorize]
     [HttpPost("[action]")]
@@ -72,9 +70,11 @@ public class CompanyController(ICompanyService companyService, IFileService file
         if (!Guid.TryParse(userId, out var directorGuidId))
             throw new UserNotFoundException();
 
-        var companyUser = await _companyService.GetCompanyUserByUserIdAsync(directorGuidId, companyId);
+        var companyUserResponse = await _companyService.GetCompanyUserByUserIdAsync(directorGuidId, companyId);
+        if (companyUserResponse.Data is null)
+            return BadRequest(companyUserResponse.Message);
 
-        var result = await _companyService.CreateCompanyPositionAsync(companyUser?.Data?.CompanyUser, companyId, request);
+        var result = await _companyService.CreateCompanyPositionAsync(companyUserResponse.Data, companyId, request);
         if (!result.IsSuccess)
             return BadRequest(result.Message);
         

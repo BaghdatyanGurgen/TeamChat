@@ -12,5 +12,4 @@ public interface IUserService
     public Task<ResponseModel<AuthResponse>> LoginAsync(LoginRequest request);
     Task<ResponseModel<AuthResponse>> RefreshTokenAsync(string token, string refreshToken);
     Task<ResponseModel<string>> LogoutAsync(Guid userGuidId);
-
 }

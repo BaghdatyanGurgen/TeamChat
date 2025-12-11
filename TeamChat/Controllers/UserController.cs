@@ -1,22 +1,17 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
 using TeamChat.Application.DTOs.User;
+using TeamChat.Domain.Models.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 using TeamChat.Application.Abstraction.Services;
-using TeamChat.Domain.Models.Exceptions.User;
 
 namespace TeamChat.API.Controllers;
 
 [ApiController]
 [Route("api/user")]
-public class UserController : ControllerBase
+public class UserController(IUserService userService) : ControllerBase
 {
-    private readonly IUserService _userService;
-
-    public UserController(IUserService userService)
-    {
-        _userService = userService;
-    }
+    private readonly IUserService _userService = userService;
 
     [HttpPost("create-draft")]
     public async Task<IActionResult> CreateDraftUser([FromBody] CreateDraftUserRequest request)
@@ -97,5 +92,4 @@ public class UserController : ControllerBase
         await _userService.LogoutAsync(userGuidId);
         return Ok(new { Message = "Logged out successfully" });
     }
-
 }

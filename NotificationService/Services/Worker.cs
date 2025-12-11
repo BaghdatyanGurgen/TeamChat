@@ -9,9 +9,7 @@ public class Worker : BackgroundService
         _listener = listener;
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        _listener.StartListening();
-        return Task.CompletedTask;
-    }
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        => await _listener.StartListening();
+        
 }

@@ -1,4 +1,4 @@
-﻿        using TeamChat.Domain.Entities;
+﻿using TeamChat.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace TeamChat.Infrastructure.Persistance;

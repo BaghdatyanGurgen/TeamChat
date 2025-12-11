@@ -1,7 +1,9 @@
 ﻿using Grpc.Core;
 using TeamChat.Contracts.Grpc;
 
-public class GrpcFileService : FileService.FileServiceBase
+namespace FileService.Services;
+
+public class GrpcFileService : TeamChat.Contracts.Grpc.FileService.FileServiceBase
 {
     public override async Task<UploadFileResponse> UploadFile(UploadFileRequest request, ServerCallContext context)
     {

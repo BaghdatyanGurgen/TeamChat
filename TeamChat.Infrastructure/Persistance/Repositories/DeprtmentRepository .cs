@@ -1,16 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
-using TeamChat.Domain.Entities;
+﻿using TeamChat.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using TeamChat.Infrastructure.Persistance.Repositories.Base;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories
 {
-    public class DepartmentRepository : BasicRepository<Department, int>, IDepartmentRepository
+    public class DepartmentRepository(AppDbContext context) 
+        : BasicRepository<Department, int>(context), IDepartmentRepository
     {
-        public DepartmentRepository(AppDbContext context) : base(context)
-        {
-        }
-
         public async Task<IEnumerable<DepartmentMember>> GetEmployeesAsync(int id)
         {
             return await _context.DepartmentMembers

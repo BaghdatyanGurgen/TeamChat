@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TeamChat.Domain.Entities;
+﻿namespace TeamChat.Application.DTOs.CompanyUser;
 
-namespace TeamChat.Application.DTOs.CompanyUser
+public record CompanyUserResponse(int Id, Guid UserId, int CompanyId, int PositionId, DateTime JoinedAt, bool IsActive)
 {
-    public record CompanyUserResponse(Domain.Entities.CompanyUser CompanyUser);
+    public CompanyUserResponse(Domain.Entities.CompanyUser companyUser) : 
+        this(companyUser.Id, companyUser.UserId, companyUser.CompanyId, companyUser.PositionId, companyUser.JoinedAt, companyUser.IsActive)
+    {
+
+    }
 }

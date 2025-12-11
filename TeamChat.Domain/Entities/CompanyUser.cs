@@ -2,8 +2,14 @@
 
 public class CompanyUser
 {
+    // Primary Key
     public int Id { get; set; }
 
+    // Properties
+    public bool IsActive { get; set; } = true;
+    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+    
+    // Foreign Keys
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
 
@@ -12,7 +18,4 @@ public class CompanyUser
 
     public int PositionId { get; set; }
     public Position Position { get; set; } = null!;
-
-    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
-    public bool IsActive { get; set; } = true;
 }
