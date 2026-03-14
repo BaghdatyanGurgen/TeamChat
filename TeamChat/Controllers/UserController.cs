@@ -81,4 +81,23 @@ public class UserController(IUserService userService) : BaseController
         await _userService.LogoutAsync(CurrentUserId);
         return Ok(new { Message = "Logged out successfully" });
     }
+
+    [Authorize]
+    [HttpPost("avatar")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> SetAvatar(IFormFile avatar)
+    {
+        if (avatar == null || avatar.Length == 0)
+            return BadRequest(new { Message = "No file provided." });
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowedTypes.Contains(avatar.ContentType.ToLower()))
+            return BadRequest(new { Message = "Only JPEG, PNG and WebP images are allowed." });
+
+        if (avatar.Length > 5 * 1024 * 1024)
+            return BadRequest(new { Message = "File size must not exceed 5 MB." });
+
+        var result = await _userService.SetUserAvatarAsync(CurrentUserId, avatar);
+        return Ok(result);
+    }
 }

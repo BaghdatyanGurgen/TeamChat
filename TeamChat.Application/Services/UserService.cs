@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using TeamChat.Application.Abstraction.Infrastructure.Email;
+using TeamChat.Application.Abstraction.Infrastructure.File;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 using TeamChat.Application.Abstraction.Infrastructure.Security;
 using TeamChat.Application.Abstraction.Services;
@@ -21,6 +22,7 @@ public class UserService(IUserRepository userRepository,
                          ITeamRepository teamRepository,
                          IEmailSender emailSender,
                          IRefreshTokenService refreshTokenService,
+                         IFileService fileService,
                          IJwtTokenService jwtTokenService) : IUserService
 {
     private readonly IEmailSender _emailSender = emailSender;
@@ -30,6 +32,7 @@ public class UserService(IUserRepository userRepository,
     private readonly IChatMemberRepository _chatMemberRepository = chatMemberRepository;
     private readonly IChatRepository _chatRepository = chatRepository;
     private readonly ITeamRepository _teamRepository = teamRepository;
+    private readonly IFileService _fileService = fileService;
 
     public async Task<ResponseModel<RegisterEmailResponse>> CreateDraftUserAsync(CreateDraftUserRequest request)
     {
@@ -197,8 +200,16 @@ public class UserService(IUserRepository userRepository,
         throw new NotImplementedException();
     }
 
-    public Task<ResponseModel> SetUserAvatarAsync(Guid userId, IFormFile avatarFile)
+    public async Task<ResponseModel> SetUserAvatarAsync(Guid userId, IFormFile avatarFile)
     {
-        throw new NotImplementedException();
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new UserNotFoundException();
+
+        var avatarUrl = await _fileService.UploadFileAsync(avatarFile, $"avatars/{userId}");
+
+        user.AvatarUrl = avatarUrl;
+        await _userRepository.UpdateAsync(user);
+
+        return ResponseModel.Success("Avatar updated successfully.");
     }
 }
