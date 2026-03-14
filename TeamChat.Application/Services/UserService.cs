@@ -17,7 +17,7 @@ using TeamChat.Domain.Models.Exceptions;
 namespace TeamChat.Application.Services;
 
 public class UserService(IUserRepository userRepository,
-                         IChatMemberRepository chatMemberRepository, 
+                         IChatMemberRepository chatMemberRepository,
                          IChatRepository chatRepository,
                          ITeamRepository teamRepository,
                          IEmailSender emailSender,
@@ -128,7 +128,7 @@ public class UserService(IUserRepository userRepository,
 
         return ResponseModel<AuthResponse>.Success(response);
     }
-    
+
     public async Task<ResponseModel<AuthResponse>> RefreshTokenAsync(string token, string refreshToken)
     {
         var userId = await _refreshTokenService.ValidateAsync(token, refreshToken);
@@ -205,7 +205,7 @@ public class UserService(IUserRepository userRepository,
         var user = await _userRepository.GetByIdAsync(userId)
             ?? throw new UserNotFoundException();
 
-        var relativeUrl = await _fileService.UploadFileAsync(avatarFile, $"avatars/{userId}");
+        var (relativeUrl, _) = await _fileService.UploadFileAsync(avatarFile, $"avatars/{userId}");
 
         var parts = relativeUrl.TrimStart('/').Split('/', 3);
         var folder = parts.Length >= 3 ? parts[1] : $"avatars/{userId}";

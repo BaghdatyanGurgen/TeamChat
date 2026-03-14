@@ -1,6 +1,8 @@
-﻿namespace TeamChat.Application.DTOs.Message;
+﻿using Microsoft.AspNetCore.Http;
 
-public record MessageAttachmentResponse(Guid Id, string FileUrl);
+namespace TeamChat.Application.DTOs.Message;
+
+public record MessageAttachmentResponse(Guid Id, string FileUrl, string OriginalFileName);
 
 public record MessageResponse(
     Guid Id,
@@ -23,7 +25,7 @@ public record MessageResponse(
             m.Content,
             m.SentAt,
             m.EditedAt == default ? null : m.EditedAt,
-            m.Attachments?.Select(a => new MessageAttachmentResponse(a.Id, a.FileUrl)).ToList() ?? [])
+            m.Attachments?.Select(a => new MessageAttachmentResponse(a.Id, a.FileUrl, a.OriginalFileName)).ToList() ?? [])
     { }
 }
 

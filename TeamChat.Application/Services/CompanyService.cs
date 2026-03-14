@@ -81,7 +81,7 @@ public class CompanyService(ICompanyRepository companyRepository,
 
         if (request.LogoFile != null)
         {
-            var relativeUrl = await _fileService.UploadFileAsync(request.LogoFile, $"companies/{company.Id}");
+            var (relativeUrl, _) = await _fileService.UploadFileAsync(request.LogoFile, $"companies/{company.Id}");
             var parts = relativeUrl.TrimStart('/').Split('/', 3);
             var folder = parts.Length >= 3 ? parts[1] : $"companies/{company.Id}";
             var fileName = parts.Length >= 3 ? parts[2] : relativeUrl;

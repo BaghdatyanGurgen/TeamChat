@@ -10,7 +10,7 @@ public class GrpcFileServiceAdapter(FileService.FileServiceClient client) : IFil
 {
     private readonly FileService.FileServiceClient _client = client;
 
-    public async Task<string> UploadFileAsync(IFormFile file, string folder)
+    public async Task<(string Url, string OriginalFileName)> UploadFileAsync(IFormFile file, string folder)
     {
         if (file == null || file.Length == 0)
             throw new ArgumentException("File is empty");
@@ -45,7 +45,7 @@ public class GrpcFileServiceAdapter(FileService.FileServiceClient client) : IFil
         await stream.CompleteAsync();
 
         var response = await call.ResponseAsync;
-        return response.Url;
+        return (response.Url, response.FileName);
     }
 
     public async Task<(byte[] Content, string MimeType)> GetFileAsync(string folder, string fileName)

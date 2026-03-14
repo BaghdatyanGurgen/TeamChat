@@ -44,7 +44,7 @@ public class MessageService(
 
         if (request.Attachment != null)
         {
-            var relativeUrl = await _fileService.UploadFileAsync(request.Attachment, $"messages/{chat.Id}");
+            var (relativeUrl, originalFileName) = await _fileService.UploadFileAsync(request.Attachment, $"messages/{chat.Id}");
             var parts = relativeUrl.TrimStart('/').Split('/', 3);
             var folder = parts.Length >= 3 ? parts[1] : $"messages/{chat.Id}";
             var fileName = parts.Length >= 3 ? parts[2] : relativeUrl;
@@ -52,7 +52,8 @@ public class MessageService(
             await _messageRepository.AddAttachmentAsync(new MessageAttachment
             {
                 MessageId = created.Id,
-                FileUrl = $"/api/files/{folder}/{fileName}"
+                FileUrl = $"/api/files/{folder}/{fileName}",
+                OriginalFileName = originalFileName
             });
         }
 
