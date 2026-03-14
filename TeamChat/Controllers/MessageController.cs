@@ -22,9 +22,8 @@ public class MessageController(IMessageService messageService) : BaseController
 
         if (result.IsSuccess && result.Data is not null)
         {
-            var hubContext = HttpContext.RequestServices.GetRequiredService<IHubContext<ChatHub>>();
-            await hubContext.Clients.Group(request.ChatId.ToString())
-                .SendAsync("ReceiveMessage", result.Data);
+            var hub = HttpContext.RequestServices.GetRequiredService<IHubContext<ChatHub>>();
+            await hub.Clients.Group(request.ChatId.ToString()).SendAsync("ReceiveMessage", result.Data);
         }
 
         return result.ToActionResult();
@@ -35,6 +34,36 @@ public class MessageController(IMessageService messageService) : BaseController
     public async Task<IActionResult> GetChatMessages([FromRoute] Guid chatId)
     {
         var result = await _messageService.GetChatMessagesAsync(CurrentUserId, chatId);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpPatch("{messageId:guid}")]
+    public async Task<IActionResult> EditMessage([FromRoute] Guid messageId, [FromBody] EditMessageRequest request)
+    {
+        var result = await _messageService.EditMessageAsync(CurrentUserId, messageId, request.Content);
+
+        if (result.IsSuccess && result.Data is not null)
+        {
+            var hub = HttpContext.RequestServices.GetRequiredService<IHubContext<ChatHub>>();
+            await hub.Clients.Group(result.Data.ChatId.ToString()).SendAsync("MessageEdited", result.Data);
+        }
+
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpDelete("{messageId:guid}")]
+    public async Task<IActionResult> DeleteMessage([FromRoute] Guid messageId)
+    {
+        var result = await _messageService.DeleteMessageAsync(CurrentUserId, messageId);
+
+        if (result.IsSuccess && result.Data is not null)
+        {
+            var hub = HttpContext.RequestServices.GetRequiredService<IHubContext<ChatHub>>();
+            await hub.Clients.Group(result.Data.ChatId.ToString())
+                .SendAsync("MessageDeleted", new { messageId = result.Data.Id, chatId = result.Data.ChatId });
+        }
 
         return result.ToActionResult();
     }

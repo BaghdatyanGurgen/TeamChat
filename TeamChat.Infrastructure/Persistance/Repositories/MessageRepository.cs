@@ -5,33 +5,34 @@ using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
-public class MessageRepository(AppDbContext context) 
+public class MessageRepository(AppDbContext context)
     : BasicRepository<Message, Guid>(context), IMessageRepository
 {
     public override async Task<Message?> GetByIdAsync(Guid id)
     {
         return await _context.Messages
-                             .Include(m => m.ReadStatuses)
-                             .Include(m => m.Attachments)
-                             .FirstOrDefaultAsync(m => m.Id == id);
+            .Include(m => m.ReadStatuses)
+            .Include(m => m.Attachments)
+            .Include(m => m.Sender)
+            .FirstOrDefaultAsync(m => m.Id == id);
     }
 
     public async Task<IEnumerable<Message>> GetMessagesByTagAsync(Guid chatId, string tag)
     {
         return await _context.Messages
-                             .Where(m => m.ChatId == chatId && 
-                                         m.Tag == tag)
-                             .Include(m => m.Attachments)
-                             .ToListAsync();
+            .Where(m => m.ChatId == chatId && m.Tag == tag)
+            .Include(m => m.Attachments)
+            .Include(m => m.Sender)
+            .ToListAsync();
     }
 
     public async Task<List<Message>> GetMessagesForChatAsync(Guid chatId)
     {
         return await _context.Messages
-                             .Where(m => m.ChatId == chatId)
-                             .Include(m => m.Attachments)
-                             .Include(m => m.Sender)
-                             .ToListAsync();
+            .Where(m => m.ChatId == chatId)
+            .Include(m => m.Attachments)
+            .Include(m => m.Sender)
+            .ToListAsync();
     }
 
     public async Task<MessageReadStatus?> GetReadStatusAsync(Guid messageId, Guid userId)
