@@ -9,9 +9,19 @@ public class FileController(IFileService fileService) : BaseController
 {
     private readonly IFileService _fileService = fileService;
 
-    [HttpGet("{folder}/{fileName}")]
-    public async Task<IActionResult> GetFile(string folder, string fileName)
+    [HttpGet("{**path}")]
+    public async Task<IActionResult> GetFile(string path)
     {
+        var lastSlash = path.LastIndexOf('/');
+        if (lastSlash < 0)
+            return NotFound();
+
+        var folder = path[..lastSlash];
+        var fileName = path[(lastSlash + 1)..];
+
+        if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(fileName))
+            return NotFound();
+
         try
         {
             var (content, mimeType) = await _fileService.GetFileAsync(folder, fileName);
