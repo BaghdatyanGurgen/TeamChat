@@ -9,6 +9,7 @@ using TeamChat.Infrastructure.RabbitMQ;
 using TeamChat.Infrastructure.Security.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using TeamChat.API.Hubs;
+using TeamChat.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -141,6 +142,7 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 app.UseRouting();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 
 app.UseCors("FrontendPolicy");
