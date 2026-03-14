@@ -15,14 +15,12 @@ public class RefreshTokenService(AppDbContext db) : IRefreshTokenService
     {
         var hash = ComputeHash(refreshToken);
 
-        var token = await _db.UserRefreshTokens
+        return await _db.UserRefreshTokens
             .Include(t => t.User)
             .FirstOrDefaultAsync(t =>
                 t.TokenHash == hash &&
                 t.RevokedAt == null &&
                 t.ExpiresAt > DateTime.UtcNow);
-
-        return token;
     }
 
     public async Task<UserRefreshToken> CreateAsync(Guid userId)
@@ -60,8 +58,11 @@ public class RefreshTokenService(AppDbContext db) : IRefreshTokenService
     public async Task<Guid> ValidateAsync(string token, string refreshToken)
     {
         var existingToken = await GetValidTokenAsync(refreshToken);
-        if (existingToken == null || existingToken.UserId.ToString() != token)
+        if (existingToken == null)
             return Guid.Empty;
+
+        existingToken.RevokedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
 
         return existingToken.UserId;
     }
