@@ -48,9 +48,11 @@ public class RabbitMqPublisher : IMessagePublisher
 
         await _channel.QueueDeclareAsync(routingKey, durable: true, exclusive: false, autoDelete: false, arguments: null);
 
-        var a = JsonSerializer.Serialize((object)message);
-        Console.WriteLine(a);
-        var body = Encoding.UTF8.GetBytes(a);
+        var serelizedMessage = JsonSerializer.Serialize((object)message);
+        
+        Console.WriteLine(serelizedMessage);
+
+        var body = Encoding.UTF8.GetBytes(serelizedMessage);
 
         await _channel.BasicPublishAsync(
             exchange: "",

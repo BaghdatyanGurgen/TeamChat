@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TeamChat.Infrastructure.Persistance;
@@ -11,9 +12,11 @@ using TeamChat.Infrastructure.Persistance;
 namespace TeamChat.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260306212453_Update")]
+    partial class Update
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -294,6 +297,7 @@ namespace TeamChat.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Tag")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -367,9 +371,6 @@ namespace TeamChat.Infrastructure.Migrations
                     b.Property<Guid>("CreatedByUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("InviteCode")
                         .IsRequired()
                         .HasColumnType("text");
@@ -389,8 +390,6 @@ namespace TeamChat.Infrastructure.Migrations
                     b.HasIndex("CompanyId");
 
                     b.HasIndex("CompanyId1");
-
-                    b.HasIndex("DepartmentId");
 
                     b.HasIndex("ParentPositionId");
 
@@ -747,18 +746,12 @@ namespace TeamChat.Infrastructure.Migrations
                         .WithMany("Positions")
                         .HasForeignKey("CompanyId1");
 
-                    b.HasOne("TeamChat.Domain.Entities.Department", "Department")
-                        .WithMany()
-                        .HasForeignKey("DepartmentId");
-
                     b.HasOne("TeamChat.Domain.Entities.Position", "ParentPosition")
                         .WithMany("SubPositions")
                         .HasForeignKey("ParentPositionId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Company");
-
-                    b.Navigation("Department");
 
                     b.Navigation("ParentPosition");
                 });

@@ -1,15 +1,14 @@
-﻿using System.Security.Claims;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TeamChat.Application.DTOs.User;
-using TeamChat.Domain.Models.Exceptions;
-using Microsoft.AspNetCore.Authorization;
+using TeamChat.API.Extensions;
 using TeamChat.Application.Abstraction.Services;
+using TeamChat.Application.DTOs.User;
 
 namespace TeamChat.API.Controllers;
 
 [ApiController]
 [Route("api/user")]
-public class UserController(IUserService userService) : ControllerBase
+public class UserController(IUserService userService) : BaseController
 {
     private readonly IUserService _userService = userService;
 
@@ -50,11 +49,7 @@ public class UserController(IUserService userService) : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userId, out var userGuidId))
-            throw new UserNotFoundException();
-
-        var result = await _userService.SetUserProfileAsync(userGuidId, request);
+        var result = await _userService.SetUserProfileAsync(CurrentUserId, request);
         return Ok(result);
     }
 
@@ -75,21 +70,15 @@ public class UserController(IUserService userService) : ControllerBase
             return BadRequest(ModelState);
 
         var result = await _userService.RefreshTokenAsync(request.Token, request.RefreshToken);
-        if (!result.IsSuccess)
-            return Unauthorized(result.Message);
 
-        return Ok(result.Data);
+        return result.ToActionResult();
     }
 
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userId, out var userGuidId))
-            throw new UserNotFoundException();
-
-        await _userService.LogoutAsync(userGuidId);
+        await _userService.LogoutAsync(CurrentUserId);
         return Ok(new { Message = "Logged out successfully" });
     }
 }

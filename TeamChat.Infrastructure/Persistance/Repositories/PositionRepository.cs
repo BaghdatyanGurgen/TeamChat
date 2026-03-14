@@ -1,8 +1,9 @@
-﻿using TeamChat.Domain.Enums;
-using TeamChat.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using TeamChat.Infrastructure.Persistance.Repositories.Base;
+﻿using Microsoft.EntityFrameworkCore;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Application.DTOs.Company;
+using TeamChat.Domain.Entities;
+using TeamChat.Domain.Enums;
+using TeamChat.Infrastructure.Persistance.Repositories.Base;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
 
@@ -29,4 +30,18 @@ public class PositionRepository(AppDbContext context)
 
     private static bool CheckPermission(Position position, PositionPermissions permission)
         => (position.Permissions & permission) == permission;
+
+    public async Task<Position?> GetByInviteCodeAsync(string inviteCode)
+    {
+        return await _dbSet.Include(p => p.Company)
+            .FirstOrDefaultAsync(p => p.InviteCode == inviteCode);
+    }
+
+    public async Task<List<Position>> GetUserPositionsAsync(Guid userId, int companyId)
+    {
+        return await _dbSet
+            .Where(p => p.CompanyId == companyId && p.CreatedByUserId == userId)
+            .AsNoTracking()
+            .ToListAsync();
+    }
 }

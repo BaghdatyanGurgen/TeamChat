@@ -19,4 +19,6 @@ public class Message
     // Navigation Properties
     public ICollection<MessageReadStatus> ReadStatuses { get; set; } = [];
     public ICollection<MessageAttachment> Attachments { get; set; } = [];
+    public DateTime EditedAt { get; set; }
+    public string? Tag { get; set; } = string.Empty;
 }

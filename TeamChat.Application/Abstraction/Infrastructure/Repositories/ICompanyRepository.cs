@@ -6,4 +6,5 @@ namespace TeamChat.Application.Abstraction.Infrastructure.Repositories;
 public interface ICompanyRepository : IBasicRepository<Company, int>
 {
     Task<IEnumerable<CompanyUser>> GetEmployeesAsync(int companyId);
+    Task<IEnumerable<Company>> GetUserCompaniesAsync(Guid userId);
 }

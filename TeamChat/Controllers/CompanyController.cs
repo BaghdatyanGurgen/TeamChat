@@ -1,83 +1,90 @@
-﻿using System.Security.Claims;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TeamChat.Application.DTOs.Company;
-using TeamChat.Domain.Models.Exceptions;
-using Microsoft.AspNetCore.Authorization;
+using TeamChat.API.Extensions;
 using TeamChat.Application.Abstraction.Services;
+using TeamChat.Application.DTOs;
+using TeamChat.Application.DTOs.Company;
 
 namespace TeamChat.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CompanyController(ICompanyService companyService) : ControllerBase
+public class CompanyController(ICompanyService companyService) : BaseController
 {
     private readonly ICompanyService _companyService = companyService;
 
     [Authorize]
-    [HttpPost("[action]")]
+    [HttpPost("create-company")]
     public async Task<IActionResult> CreateCompany([FromBody] CreateCompanyRequest request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var result = await _companyService.CreateCompanyAsync(CurrentUserId, request);
 
-        if (!Guid.TryParse(userId, out var directorGuidId))
-            throw new UserNotFoundException();
-
-        var result = await _companyService.CreateCompanyAsync(directorGuidId, request);
-        if (!result.IsSuccess)
-            return BadRequest(result.Message);
-
-        return Ok(result);
+        return result.ToActionResult();
     }
 
     [HttpPatch("{companyId:int}/set-details")]
-    public async Task<IActionResult> SetDetails([FromRoute] int companyId, 
+    public async Task<IActionResult> SetDetails([FromRoute] int companyId,
                                                 [FromForm] SetCompanyDetailsRequest request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userId, out _))
-            throw new UserNotFoundException();
+        var userId = CurrentUserId;
 
         var result = await _companyService.SetCompanyDetailsAsync(companyId, request);
 
-        if (!result.IsSuccess)
-            return BadRequest(result.Message);
-
-        return Ok(result);
+        return result.ToActionResult();
     }
 
-    [HttpPut("{companyId:int}/create-department")]
+    [HttpPost("{companyId:int}/departments")]
     public async Task<IActionResult> CreateCompanyDepartment([FromRoute] int companyId,
                                                              [FromBody] CreateCompanyDepartmentRequest request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var result = await _companyService.CreateCompanyDepartmentAsync(CurrentUserId, companyId, request);
 
-        if (!Guid.TryParse(userId, out var directorGuidId))
-            throw new UserNotFoundException();
-
-        var result = await _companyService.CreateCompanyDepartmentAsync(directorGuidId, companyId, request);
-        if (!result.IsSuccess)
-            return BadRequest(result.Message);
-        
-        return Ok(result);
+        return result.ToActionResult();
     }
 
-    [HttpPut("{companyId:int}/create-possition")]
+    [HttpPut("{companyId:int}/create-position")]
     public async Task<IActionResult> CreateCompanyPosition([FromRoute] int companyId,
                                                            [FromBody] CreateCompanyPositionRequest request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (!Guid.TryParse(userId, out var directorGuidId))
-            throw new UserNotFoundException();
-
-        var companyUserResponse = await _companyService.GetCompanyUserByUserIdAsync(directorGuidId, companyId);
+        var companyUserResponse = await _companyService.GetCompanyUserByUserIdAsync(CurrentUserId, companyId);
         if (companyUserResponse.Data is null)
             return BadRequest(companyUserResponse.Message);
 
         var result = await _companyService.CreateCompanyPositionAsync(companyUserResponse.Data, companyId, request);
-        if (!result.IsSuccess)
-            return BadRequest(result.Message);
-        
-        return Ok(result);
+
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpGet("my-companies")]
+    public async Task<IActionResult> GetMyCompanies()
+    {
+        var result = await _companyService.GetUserCompaniesAsync(CurrentUserId);
+
+        return result.ToActionResult();
+    }
+
+    [HttpPost("join-by-invite")]
+    public async Task<IActionResult> JoinByInvite([FromBody] JoinCompanyByInviteRequest request)
+    {
+        var result = await _companyService.JoinCompanyByInviteAsync(CurrentUserId, request);
+       
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpGet("{companyId:int}/me")]
+    public async Task<IActionResult> GetCompanyUserInfo([FromRoute] int companyId)
+    {
+        var result = await _companyService.GetCompanyUserByUserIdAsync(CurrentUserId, companyId);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpGet("{companyId:int}/positions/user")]
+    public async Task<IActionResult> GetUserPositions([FromRoute] int companyId)
+    {
+        var result = await _companyService.GetUserPositionsAsync(CurrentUserId, companyId);
+        return result.ToActionResult();
     }
 }

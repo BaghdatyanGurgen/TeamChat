@@ -6,4 +6,5 @@ namespace TeamChat.Application.Abstraction.Infrastructure.Repositories;
 public interface IChatMemberRepository : IBasicRepository<ChatMember, Guid>
 {
     Task<ChatMember?> GetByUserAndChatAsync(Guid userId, Guid chatId);
+    Task<IEnumerable<ChatMember>> GetChatsByUserIdAsync(Guid userId);
 }

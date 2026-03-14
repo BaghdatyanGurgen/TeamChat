@@ -8,6 +8,8 @@ public class Chat
     // Properties
     public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string Topic { get; set; } = string.Empty;
+    public Guid PinnedMessageId { get; set; }
 
     // Foreign keys
     public Guid OwnerId { get; set; }

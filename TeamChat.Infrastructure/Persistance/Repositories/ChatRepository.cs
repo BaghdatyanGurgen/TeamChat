@@ -24,4 +24,19 @@ public class ChatRepository(AppDbContext context)
             .ThenInclude(m => m.Roles)
             .FirstOrDefaultAsync(c => c.Id == id);
     }
+
+    public async Task<List<Chat>> GetUserCompanyChatsAsync(Guid userId, int companyId)
+    {
+        return await _context.Chats
+            .Where(c => c.CompanyId == companyId &&
+                        c.Members.Any(m => m.UserId == userId))
+            .ToListAsync();
+    }
+
+    public async Task<List<Chat>> GetByDepartment(int? departmentId)
+    {
+        return await _context.Chats
+            .Where(c => c.DepartmentId == departmentId)
+            .ToListAsync();
+    }
 }

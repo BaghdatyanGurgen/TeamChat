@@ -1,7 +1,8 @@
-﻿using System.Security.Claims;
+﻿using TeamChat.API.Hubs;
+using TeamChat.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using TeamChat.Application.DTOs.Message;
-using TeamChat.Domain.Models.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using TeamChat.Application.Abstraction.Services;
 
@@ -9,7 +10,7 @@ namespace TeamChat.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class MessageController(IMessageService messageService) : ControllerBase
+public class MessageController(IMessageService messageService) : BaseController
 {
     private readonly IMessageService _messageService = messageService;
 
@@ -17,33 +18,24 @@ public class MessageController(IMessageService messageService) : ControllerBase
     [HttpPost("send")]
     public async Task<IActionResult> SendMessage([FromBody] CreateMessageRequest request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var result = await _messageService.CreateMessageAsync(CurrentUserId, request);
 
-        if (!Guid.TryParse(userId, out var guidUserId))
-            throw new UserNotFoundException();
+        if (result.IsSuccess && result.Data is not null)
+        {
+            var hubContext = HttpContext.RequestServices.GetRequiredService<IHubContext<ChatHub>>();
+            await hubContext.Clients.Group(request.ChatId.ToString())
+                .SendAsync("ReceiveMessage", result.Data);
+        }
 
-        var result = await _messageService.CreateMessageAsync(guidUserId, request);
-
-        if (!result.IsSuccess)
-            return BadRequest(result.Message);
-
-        return Ok(result);
+        return result.ToActionResult();
     }
 
     [Authorize]
     [HttpGet("{chatId:guid}")]
     public async Task<IActionResult> GetChatMessages([FromRoute] Guid chatId)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var result = await _messageService.GetChatMessagesAsync(CurrentUserId, chatId);
 
-        if (!Guid.TryParse(userId, out var guidUserId))
-            throw new UserNotFoundException();
-
-        var result = await _messageService.GetChatMessagesAsync(guidUserId, chatId);
-
-        if (!result.IsSuccess)
-            return BadRequest(result.Message);
-
-        return Ok(result);
+        return result.ToActionResult();
     }
 }

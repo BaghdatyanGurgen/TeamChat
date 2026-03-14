@@ -12,6 +12,12 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<RabbitMqListener>();
         services.AddHostedService<Worker>();
     })
+    .ConfigureLogging(logging =>
+    {
+        logging.ClearProviders();
+        logging.AddConsole();
+        logging.SetMinimumLevel(LogLevel.Information);
+    })
     .Build();
 
 await host.RunAsync();

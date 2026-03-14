@@ -1,16 +1,24 @@
-﻿using TeamChat.Domain.Entities;
+﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
+using TeamChat.Application.Abstraction.Infrastructure.Email;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Application.Abstraction.Infrastructure.Security;
+using TeamChat.Application.Abstraction.Services;
 using TeamChat.Application.DTOs;
+using TeamChat.Application.DTOs.Chat;
+using TeamChat.Application.DTOs.Team;
 using TeamChat.Application.DTOs.User;
 using TeamChat.Application.Validation;
-using TeamChat.Application.Abstraction.Services;
-using TeamChat.Application.Abstraction.Infrastructure.Email;
-using TeamChat.Application.Abstraction.Infrastructure.Security;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Domain.Entities;
 using TeamChat.Domain.Models.Exceptions;
 
 namespace TeamChat.Application.Services;
 
 public class UserService(IUserRepository userRepository,
+                         IChatMemberRepository chatMemberRepository, 
+                         IChatRepository chatRepository,
+                         ITeamRepository teamRepository,
                          IEmailSender emailSender,
                          IRefreshTokenService refreshTokenService,
                          IJwtTokenService jwtTokenService) : IUserService
@@ -19,6 +27,9 @@ public class UserService(IUserRepository userRepository,
     private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
     private readonly IJwtTokenService _jwtTokenService = jwtTokenService;
     private readonly IUserRepository _userRepository = userRepository;
+    private readonly IChatMemberRepository _chatMemberRepository = chatMemberRepository;
+    private readonly IChatRepository _chatRepository = chatRepository;
+    private readonly ITeamRepository _teamRepository = teamRepository;
 
     public async Task<ResponseModel<RegisterEmailResponse>> CreateDraftUserAsync(CreateDraftUserRequest request)
     {
@@ -135,5 +146,59 @@ public class UserService(IUserRepository userRepository,
     {
         await _refreshTokenService.RevokeAsync(userGuidId);
         return ResponseModel<string>.Success("Logged out successfully");
+    }
+
+
+    public async Task<ResponseModel<IEnumerable<ChatResponse>>> GetUserChatsAsync(Guid userId)
+    {
+        var chatMembers = await _chatMemberRepository.GetChatsByUserIdAsync(userId);
+        var chats = new List<ChatResponse>();
+
+        foreach (var cm in chatMembers)
+        {
+            var chat = await _chatRepository.GetByIdAsync(cm.ChatId);
+            if (chat != null)
+                chats.Add(new ChatResponse(chat));
+        }
+
+        return ResponseModel<IEnumerable<ChatResponse>>.Success(chats);
+    }
+
+    public async Task<ResponseModel<IEnumerable<TeamResponse>>> GetUserProjectsAsync(Guid userId)
+    {
+        var projects = await _teamRepository.GetByUserIdAsync(userId);
+        var responses = projects.Select(p => new TeamResponse(p));
+
+        return ResponseModel<IEnumerable<TeamResponse>>.Success(responses);
+    }
+
+    public Task<ResponseModel<UserProfileResponse>> GetUserProfileAsync(Guid userId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<ResponseModel> ChangePasswordAsync(Guid userId, string oldPassword, string newPassword)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<ResponseModel> ChangeEmailAsync(Guid userId, string newEmail)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<ResponseModel<IEnumerable<RoleResponse>>> GetUserRolesAsync(Guid userId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<ResponseModel<IEnumerable<UserActivityResponse>>> GetUserActivityAsync(Guid userId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<ResponseModel> SetUserAvatarAsync(Guid userId, IFormFile avatarFile)
+    {
+        throw new NotImplementedException();
     }
 }

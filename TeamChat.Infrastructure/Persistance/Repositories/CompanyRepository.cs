@@ -23,4 +23,12 @@ public class CompanyRepository(AppDbContext context)
             .Where(cu => cu.CompanyId == companyId)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<Company>> GetUserCompaniesAsync(Guid userId)
+    {
+        return await _context.CompanyUsers
+            .Where(cu => cu.UserId == userId)
+            .Select(cu => cu.Company)
+            .ToListAsync();
+    }
 }

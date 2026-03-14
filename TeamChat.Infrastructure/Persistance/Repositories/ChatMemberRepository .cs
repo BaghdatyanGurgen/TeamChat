@@ -13,4 +13,11 @@ public class ChatMemberRepository(AppDbContext db)
         return await _context.ChatMembers
             .FirstOrDefaultAsync(x => x.UserId == userId && x.ChatId == chatId);
     }
+
+    public async Task<IEnumerable<ChatMember>> GetChatsByUserIdAsync(Guid userId)
+    {
+        return await _context.ChatMembers
+            .Where(x => x.UserId == userId)
+            .ToListAsync();
+    }
 }

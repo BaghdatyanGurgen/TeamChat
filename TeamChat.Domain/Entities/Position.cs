@@ -23,6 +23,9 @@ public class Position
     public int? ParentPositionId { get; set; }
     public Position? ParentPosition { get; set; }
 
+    public int? DepartmentId { get; set; }
+    public Department? Department { get; set; }
+
     // Navigation Properties
     public ICollection<Position> SubPositions { get; set; } = [];
     public ICollection<CompanyUser> AssignedUsers { get; set; } = [];

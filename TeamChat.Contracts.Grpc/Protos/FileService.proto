@@ -2,18 +2,52 @@ syntax = "proto3";
 
 option csharp_namespace = "TeamChat.Contracts.Grpc";
 
-package files;
+package teamchat.files;
+
+import "google/protobuf/timestamp.proto";
 
 service FileService {
-  rpc UploadFile (UploadFileRequest) returns (UploadFileResponse);
+  rpc UploadFile (stream UploadChunk) returns (UploadFileResponse);
+
+  rpc GetFile (GetFileRequest) returns (stream FileChunk);
+
+  rpc DeleteFile (DeleteFileRequest) returns (DeleteFileResponse);
 }
 
-message UploadFileRequest {
+message UploadChunk {
   string fileName = 1;
   string folder = 2;
   bytes content = 3;
+  int64 chunkIndex = 4;
+  int64 totalChunks = 5;
+  int64 fileSize = 6;
+  string mimeType = 7;
 }
 
 message UploadFileResponse {
   string url = 1;
+  string fileName = 2;
+  int64 fileSize = 3;
+  string mimeType = 4;
+  google.protobuf.Timestamp uploadedAt = 5;
+}
+
+message GetFileRequest {
+  string fileName = 1;
+  string folder = 2;
+}
+
+message FileChunk {
+  bytes content = 1;
+  int64 chunkIndex = 2;
+  int64 totalChunks = 3;
+  string mimeType = 4;
+}
+
+message DeleteFileRequest {
+  string url = 1;
+}
+
+message DeleteFileResponse {
+  bool success = 1;
 }

@@ -7,3 +7,4 @@ public record CreateCompanyRequest(string Name);
 public record SetCompanyDetailsRequest(string Description, IFormFile LogoFile);
 public record CreateCompanyDepartmentRequest(string Name, string Description);
 public record CreateCompanyPositionRequest(string Title, PositionPermissions Permissions);
+public record JoinCompanyByInviteRequest(string InviteCode);
