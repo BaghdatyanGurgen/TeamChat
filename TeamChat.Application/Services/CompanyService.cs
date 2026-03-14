@@ -77,24 +77,21 @@ public class CompanyService(ICompanyRepository companyRepository,
         if (company == null)
             return ResponseModel<SetCompanyDetailsResponse>.Fail("Company not found");
 
-        string? logoUrl = null;
+        company.Description = request.Description;
 
         if (request.LogoFile != null)
         {
-            logoUrl = await _fileService.UploadFileAsync(
-                request.LogoFile,
-                $"companies/{company.Id}"
-            );
+            var relativeUrl = await _fileService.UploadFileAsync(request.LogoFile, $"companies/{company.Id}");
+            var parts = relativeUrl.TrimStart('/').Split('/', 3);
+            var folder = parts.Length >= 3 ? parts[1] : $"companies/{company.Id}";
+            var fileName = parts.Length >= 3 ? parts[2] : relativeUrl;
+            company.LogoUrl = $"/api/files/{folder}/{fileName}";
         }
-
-        company.Description = request.Description;
-
-        if (logoUrl != null)
-            company.LogoUrl = logoUrl;
 
         await _companyRepository.UpdateAsync(company);
 
-        return ResponseModel<SetCompanyDetailsResponse>.Success(new SetCompanyDetailsResponse(company.Id, company.Name, company.Description, company.LogoUrl));
+        return ResponseModel<SetCompanyDetailsResponse>.Success(
+            new SetCompanyDetailsResponse(company.Id, company.Name, company.Description, company.LogoUrl));
     }
     public async Task<ResponseModel<CreateCompanyDepartmentResponse>> CreateCompanyDepartmentAsync(Guid userId, int companyId, CreateCompanyDepartmentRequest request)
     {

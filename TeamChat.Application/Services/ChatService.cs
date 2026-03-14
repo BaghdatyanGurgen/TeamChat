@@ -204,23 +204,18 @@ public class ChatService(IChatRepository chatRepository,
 
     public async Task MarkMessageAsReadAsync(Guid chatId, Guid messageId, Guid userId)
     {
-        // Проверяем, что чат существует
         var chat = await _chatRepository.GetByIdAsync(chatId)
                    ?? throw new ValidationException("Chat not found");
 
-        // Проверяем, что пользователь состоит в чате
         var chatMember = await _chatMemberRepository.GetByUserAndChatAsync(userId, chatId)
                          ?? throw new NoAccessException();
 
-        // Проверяем, что сообщение существует
         var message = await _messageRepository.GetByIdAsync(messageId)
                       ?? throw new ValidationException("Message not found");
 
-        // Проверяем, что сообщение относится к этому чату
         if (message.ChatId != chatId)
             throw new ValidationException("Message does not belong to this chat");
 
-        // Добавляем/обновляем статус прочтения
         var existingRead = await _messageRepository.GetReadStatusAsync(messageId, userId);
         if (existingRead == null)
         {
