@@ -205,11 +205,17 @@ public class UserService(IUserRepository userRepository,
         var user = await _userRepository.GetByIdAsync(userId)
             ?? throw new UserNotFoundException();
 
-        var avatarUrl = await _fileService.UploadFileAsync(avatarFile, $"avatars/{userId}");
+        var relativeUrl = await _fileService.UploadFileAsync(avatarFile, $"avatars/{userId}");
 
-        user.AvatarUrl = avatarUrl;
+        var parts = relativeUrl.TrimStart('/').Split('/', 3);
+        var folder = parts.Length >= 3 ? parts[1] : "avatars";
+        var fileName = parts.Length >= 3 ? parts[2] : relativeUrl;
+
+        user.AvatarUrl = $"/api/files/{Uri.EscapeDataString(folder)}/{fileName}";
+
         await _userRepository.UpdateAsync(user);
 
         return ResponseModel.Success("Avatar updated successfully.");
     }
+
 }
