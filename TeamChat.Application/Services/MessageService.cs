@@ -4,6 +4,7 @@ using TeamChat.Application.DTOs.Message;
 using TeamChat.Domain.Models.Exceptions;
 using TeamChat.Messaging.Contracts.Message;
 using TeamChat.Application.Abstraction.Services;
+using TeamChat.Application.Abstraction.Infrastructure.File;
 using TeamChat.Application.Abstraction.Infrastructure.Messaging;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
@@ -14,13 +15,15 @@ public class MessageService(
     IChatRepository chatRepository,
     IChatMemberRepository chatMemberRepository,
     IUserRepository userRepository,
-    IMessagePublisher messagePublisher) : IMessageService
+    IMessagePublisher messagePublisher,
+    IFileService fileService) : IMessageService
 {
     private readonly IMessageRepository _messageRepository = messageRepository;
     private readonly IChatRepository _chatRepository = chatRepository;
     private readonly IChatMemberRepository _chatMemberRepository = chatMemberRepository;
     private readonly IUserRepository _userRepository = userRepository;
     private readonly IMessagePublisher _messagePublisher = messagePublisher;
+    private readonly IFileService _fileService = fileService;
 
     public async Task<ResponseModel<MessageResponse>> CreateMessageAsync(Guid userId, CreateMessageRequest request)
     {
@@ -38,9 +41,26 @@ public class MessageService(
         };
 
         var created = await _messageRepository.AddAsync(message);
-        await _messagePublisher.PublishAsync(new MessageCreatedEvent(new MessageCreatedPayload(chat.Id, created.Id, created.SenderId, created.Content, created.SentAt)));
 
-        return ResponseModel<MessageResponse>.Success(new MessageResponse(created));
+        if (request.Attachment != null)
+        {
+            var relativeUrl = await _fileService.UploadFileAsync(request.Attachment, $"messages/{chat.Id}");
+            var parts = relativeUrl.TrimStart('/').Split('/', 3);
+            var folder = parts.Length >= 3 ? parts[1] : $"messages/{chat.Id}";
+            var fileName = parts.Length >= 3 ? parts[2] : relativeUrl;
+
+            await _messageRepository.AddAttachmentAsync(new MessageAttachment
+            {
+                MessageId = created.Id,
+                FileUrl = $"/api/files/{folder}/{fileName}"
+            });
+        }
+
+        await _messagePublisher.PublishAsync(new MessageCreatedEvent(
+            new MessageCreatedPayload(chat.Id, created.Id, created.SenderId, created.Content, created.SentAt)));
+
+        var withAttachments = await _messageRepository.GetByIdAsync(created.Id) ?? created;
+        return ResponseModel<MessageResponse>.Success(new MessageResponse(withAttachments));
     }
 
     public async Task<ResponseModel<IEnumerable<MessageResponse>>> GetChatMessagesAsync(Guid userId, Guid chatId)
@@ -55,7 +75,6 @@ public class MessageService(
     public async Task<ResponseModel<MessageResponse>> EditMessageAsync(Guid userId, Guid messageId, string newContent)
     {
         var message = await _messageRepository.GetByIdAsync(messageId) ?? throw new MessageNotFoundException();
-
         if (message.SenderId != userId) throw new NoAccessException();
 
         message.Content = newContent;
@@ -68,11 +87,9 @@ public class MessageService(
     public async Task<ResponseModel<MessageResponse>> DeleteMessageAsync(Guid userId, Guid messageId)
     {
         var message = await _messageRepository.GetByIdAsync(messageId) ?? throw new MessageNotFoundException();
-
         if (message.SenderId != userId) throw new NoAccessException();
 
         await _messageRepository.RemoveAsync(message);
-
         return ResponseModel<MessageResponse>.Success(new MessageResponse(message));
     }
 
@@ -82,7 +99,6 @@ public class MessageService(
         _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, chatId) ?? throw new NoAccessException();
 
         await _messageRepository.MarkAllAsReadAsync(chatId, userId);
-
         return ResponseModel.Success("Messages marked as read.");
     }
 
@@ -94,8 +110,7 @@ public class MessageService(
         foreach (var membership in memberships)
         {
             var count = await _messageRepository.GetUnreadCountAsync(membership.ChatId, userId);
-            if (count > 0)
-                counts[membership.ChatId] = count;
+            if (count > 0) counts[membership.ChatId] = count;
         }
 
         return ResponseModel<Dictionary<Guid, int>>.Success(counts);
@@ -108,7 +123,6 @@ public class MessageService(
 
         message.Tag = tag;
         await _messageRepository.UpdateAsync(message);
-
         return ResponseModel<MessageResponse>.Success(new MessageResponse(message));
     }
 

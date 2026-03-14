@@ -86,4 +86,10 @@ public class MessageRepository(AppDbContext context)
         await _context.MessageReadStatuses.AddRangeAsync(statuses);
         await _context.SaveChangesAsync();
     }
+
+    public async Task AddAttachmentAsync(MessageAttachment attachment)
+    {
+        await _context.MessageAttachments.AddAsync(attachment);
+        await _context.SaveChangesAsync();
+    }
 }

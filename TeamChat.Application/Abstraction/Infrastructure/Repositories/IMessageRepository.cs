@@ -1,5 +1,4 @@
 ﻿using TeamChat.Application.Abstraction.Infrastructure.Repositories.Base;
-using TeamChat.Application.DTOs.Message;
 using TeamChat.Domain.Entities;
 
 namespace TeamChat.Application.Abstraction.Infrastructure.Repositories;
@@ -13,4 +12,5 @@ public interface IMessageRepository : IBasicRepository<Message, Guid>
     Task UpdateReadStatusAsync(object existingRead);
     Task<int> GetUnreadCountAsync(Guid chatId, Guid userId);
     Task MarkAllAsReadAsync(Guid chatId, Guid userId);
+    Task AddAttachmentAsync(MessageAttachment attachment);
 }

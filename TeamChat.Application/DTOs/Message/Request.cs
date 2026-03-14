@@ -1,3 +1,5 @@
-﻿namespace TeamChat.Application.DTOs.Message;
+﻿using Microsoft.AspNetCore.Http;
 
-public record CreateMessageRequest(Guid ChatId, string Content);
+namespace TeamChat.Application.DTOs.Message;
+
+public record CreateMessageRequest(Guid ChatId, string Content, IFormFile? Attachment = null);

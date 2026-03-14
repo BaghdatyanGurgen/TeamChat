@@ -16,14 +16,16 @@ public class MessageController(IMessageService messageService) : BaseController
 
     [Authorize]
     [HttpPost("send")]
-    public async Task<IActionResult> SendMessage([FromBody] CreateMessageRequest request)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> SendMessage([FromForm] Guid chatId, [FromForm] string content, IFormFile? attachment)
     {
+        var request = new CreateMessageRequest(chatId, content, attachment);
         var result = await _messageService.CreateMessageAsync(CurrentUserId, request);
 
         if (result.IsSuccess && result.Data is not null)
         {
             var hub = HttpContext.RequestServices.GetRequiredService<IHubContext<ChatHub>>();
-            await hub.Clients.Group(request.ChatId.ToString()).SendAsync("ReceiveMessage", result.Data);
+            await hub.Clients.Group(chatId.ToString()).SendAsync("ReceiveMessage", result.Data);
         }
 
         return result.ToActionResult();
