@@ -57,4 +57,33 @@ public class MessageRepository(AppDbContext context)
     {
         throw new NotImplementedException();
     }
+
+    public async Task<int> GetUnreadCountAsync(Guid chatId, Guid userId)
+    {
+        return await _context.Messages
+            .Where(m => m.ChatId == chatId && m.SenderId != userId)
+            .CountAsync(m => !_context.MessageReadStatuses
+                .Any(r => r.MessageId == m.Id && r.UserId == userId));
+    }
+
+    public async Task MarkAllAsReadAsync(Guid chatId, Guid userId)
+    {
+        var unread = await _context.Messages
+            .Where(m => m.ChatId == chatId && m.SenderId != userId)
+            .Where(m => !_context.MessageReadStatuses
+                .Any(r => r.MessageId == m.Id && r.UserId == userId))
+            .ToListAsync();
+
+        if (!unread.Any()) return;
+
+        var statuses = unread.Select(m => new MessageReadStatus
+        {
+            MessageId = m.Id,
+            UserId = userId,
+            ReadAt = DateTime.UtcNow
+        });
+
+        await _context.MessageReadStatuses.AddRangeAsync(statuses);
+        await _context.SaveChangesAsync();
+    }
 }

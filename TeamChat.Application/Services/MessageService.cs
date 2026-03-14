@@ -24,14 +24,9 @@ public class MessageService(
 
     public async Task<ResponseModel<MessageResponse>> CreateMessageAsync(Guid userId, CreateMessageRequest request)
     {
-        var chat = await _chatRepository.GetByIdAsync(request.ChatId)
-            ?? throw new ChatNotFoundException();
-
-        _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, request.ChatId)
-            ?? throw new NoAccessException();
-
-        var user = await _userRepository.GetByIdAsync(userId)
-            ?? throw new UserNotFoundException();
+        var chat = await _chatRepository.GetByIdAsync(request.ChatId) ?? throw new ChatNotFoundException();
+        _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, request.ChatId) ?? throw new NoAccessException();
+        var user = await _userRepository.GetByIdAsync(userId) ?? throw new UserNotFoundException();
 
         var message = new Message
         {
@@ -43,9 +38,7 @@ public class MessageService(
         };
 
         var created = await _messageRepository.AddAsync(message);
-
-        var payload = new MessageCreatedPayload(chat.Id, created.Id, created.SenderId, created.Content, created.SentAt);
-        await _messagePublisher.PublishAsync(new MessageCreatedEvent(payload));
+        await _messagePublisher.PublishAsync(new MessageCreatedEvent(new MessageCreatedPayload(chat.Id, created.Id, created.SenderId, created.Content, created.SentAt)));
 
         return ResponseModel<MessageResponse>.Success(new MessageResponse(created));
     }
@@ -61,11 +54,9 @@ public class MessageService(
 
     public async Task<ResponseModel<MessageResponse>> EditMessageAsync(Guid userId, Guid messageId, string newContent)
     {
-        var message = await _messageRepository.GetByIdAsync(messageId)
-            ?? throw new MessageNotFoundException();
+        var message = await _messageRepository.GetByIdAsync(messageId) ?? throw new MessageNotFoundException();
 
-        if (message.SenderId != userId)
-            throw new NoAccessException();
+        if (message.SenderId != userId) throw new NoAccessException();
 
         message.Content = newContent;
         message.EditedAt = DateTime.UtcNow;
@@ -76,41 +67,49 @@ public class MessageService(
 
     public async Task<ResponseModel<MessageResponse>> DeleteMessageAsync(Guid userId, Guid messageId)
     {
-        var message = await _messageRepository.GetByIdAsync(messageId)
-            ?? throw new MessageNotFoundException();
+        var message = await _messageRepository.GetByIdAsync(messageId) ?? throw new MessageNotFoundException();
 
-        if (message.SenderId != userId)
-            throw new NoAccessException();
+        if (message.SenderId != userId) throw new NoAccessException();
 
         await _messageRepository.RemoveAsync(message);
 
         return ResponseModel<MessageResponse>.Success(new MessageResponse(message));
     }
 
+    public async Task<ResponseModel> MarkAllAsReadAsync(Guid chatId, Guid userId)
+    {
+        _ = await _chatRepository.GetByIdAsync(chatId) ?? throw new ChatNotFoundException();
+        _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, chatId) ?? throw new NoAccessException();
+
+        await _messageRepository.MarkAllAsReadAsync(chatId, userId);
+
+        return ResponseModel.Success("Messages marked as read.");
+    }
+
+    public async Task<ResponseModel<Dictionary<Guid, int>>> GetUnreadCountsAsync(Guid userId, int companyId)
+    {
+        var memberships = await _chatMemberRepository.GetChatsByUserIdAsync(userId);
+        var counts = new Dictionary<Guid, int>();
+
+        foreach (var membership in memberships)
+        {
+            var count = await _messageRepository.GetUnreadCountAsync(membership.ChatId, userId);
+            if (count > 0)
+                counts[membership.ChatId] = count;
+        }
+
+        return ResponseModel<Dictionary<Guid, int>>.Success(counts);
+    }
+
     public async Task<ResponseModel<MessageResponse>> TagMessageAsync(Guid userId, Guid messageId, string tag)
     {
-        var message = await _messageRepository.GetByIdAsync(messageId)
-            ?? throw new MessageNotFoundException();
-
-        _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, message.ChatId)
-            ?? throw new NoAccessException();
+        var message = await _messageRepository.GetByIdAsync(messageId) ?? throw new MessageNotFoundException();
+        _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, message.ChatId) ?? throw new NoAccessException();
 
         message.Tag = tag;
         await _messageRepository.UpdateAsync(message);
 
         return ResponseModel<MessageResponse>.Success(new MessageResponse(message));
-    }
-
-    public async Task<ResponseModel<IEnumerable<MessageResponse>>> GetMessagesByTagAsync(Guid userId, Guid chatId, string tag)
-    {
-        _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, chatId) ?? throw new NoAccessException();
-        var messages = await _messageRepository.GetMessagesByTagAsync(chatId, tag);
-        return ResponseModel<IEnumerable<MessageResponse>>.Success(messages.Select(m => new MessageResponse(m)));
-    }
-
-    public Task<ResponseModel> MarkMessageAsReadAsync(Guid chatId, Guid messageId, Guid userId)
-    {
-        throw new NotImplementedException();
     }
 
     public Task<ResponseModel<IEnumerable<MessageResponse>>> GetMessagesPagedAsync(Guid chatId, int page, int pageSize)

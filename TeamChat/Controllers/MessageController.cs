@@ -67,4 +67,20 @@ public class MessageController(IMessageService messageService) : BaseController
 
         return result.ToActionResult();
     }
+
+    [Authorize]
+    [HttpPost("{chatId:guid}/read")]
+    public async Task<IActionResult> MarkAllAsRead([FromRoute] Guid chatId)
+    {
+        var result = await _messageService.MarkAllAsReadAsync(chatId, CurrentUserId);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpGet("unread/{companyId:int}")]
+    public async Task<IActionResult> GetUnreadCounts([FromRoute] int companyId)
+    {
+        var result = await _messageService.GetUnreadCountsAsync(CurrentUserId, companyId);
+        return result.ToActionResult();
+    }
 }
