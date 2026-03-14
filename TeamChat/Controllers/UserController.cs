@@ -83,6 +83,17 @@ public class UserController(IUserService userService) : BaseController
     }
 
     [Authorize]
+    [HttpPatch("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _userService.ChangePasswordAsync(CurrentUserId, request.OldPassword, request.NewPassword);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
     [HttpPost("avatar")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> SetAvatar(IFormFile avatar)

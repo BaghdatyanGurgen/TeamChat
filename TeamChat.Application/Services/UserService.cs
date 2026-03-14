@@ -180,9 +180,19 @@ public class UserService(IUserRepository userRepository,
         throw new NotImplementedException();
     }
 
-    public Task<ResponseModel> ChangePasswordAsync(Guid userId, string oldPassword, string newPassword)
+    public async Task<ResponseModel> ChangePasswordAsync(Guid userId, string oldPassword, string newPassword)
     {
-        throw new NotImplementedException();
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new UserNotFoundException();
+
+        if (!UserValidation.IsValidPassword(newPassword))
+            throw new InvalidPasswordException();
+
+        await _userRepository.GetByEmailAndPasswordAsync(user.Email, oldPassword);
+
+        await _userRepository.SetPassword(userId, newPassword);
+
+        return ResponseModel.Success("Password changed successfully.");
     }
 
     public Task<ResponseModel> ChangeEmailAsync(Guid userId, string newEmail)
