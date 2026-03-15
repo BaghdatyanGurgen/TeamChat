@@ -175,9 +175,13 @@ public class UserService(IUserRepository userRepository,
         return ResponseModel<IEnumerable<TeamResponse>>.Success(responses);
     }
 
-    public Task<ResponseModel<UserProfileResponse>> GetUserProfileAsync(Guid userId)
+    public async Task<ResponseModel<UserProfileResponse>> GetUserProfileAsync(Guid userId)
     {
-        throw new NotImplementedException();
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new UserNotFoundException();
+
+        return ResponseModel<UserProfileResponse>.Success(
+            new UserProfileResponse(user.Id, user.Email, user.FirstName, user.LastName, user.AvatarUrl, user.CreatedAt));
     }
 
     public async Task<ResponseModel> ChangePasswordAsync(Guid userId, string oldPassword, string newPassword)

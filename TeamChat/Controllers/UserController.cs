@@ -83,6 +83,14 @@ public class UserController(IUserService userService) : BaseController
     }
 
     [Authorize]
+    [HttpGet("{userId:guid}")]
+    public async Task<IActionResult> GetUserProfile([FromRoute] Guid userId)
+    {
+        var result = await _userService.GetUserProfileAsync(userId);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
     [HttpPatch("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
@@ -107,7 +115,7 @@ public class UserController(IUserService userService) : BaseController
 
         if (avatar.Length > 5 * 1024 * 1024)
             return BadRequest(new { Message = "File size must not exceed 5 MB." });
-
+        
         var result = await _userService.SetUserAvatarAsync(CurrentUserId, avatar);
         return Ok(result);
     }
