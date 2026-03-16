@@ -68,7 +68,7 @@ public class CompanyController(ICompanyService companyService) : BaseController
     public async Task<IActionResult> JoinByInvite([FromBody] JoinCompanyByInviteRequest request)
     {
         var result = await _companyService.JoinCompanyByInviteAsync(CurrentUserId, request);
-       
+
         return result.ToActionResult();
     }
 
@@ -77,6 +77,14 @@ public class CompanyController(ICompanyService companyService) : BaseController
     public async Task<IActionResult> GetCompanyUserInfo([FromRoute] int companyId)
     {
         var result = await _companyService.GetCompanyUserByUserIdAsync(CurrentUserId, companyId);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpGet("{companyId:int}/departments")]
+    public async Task<IActionResult> GetCompanyDepartments([FromRoute] int companyId)
+    {
+        var result = await _companyService.GetCompanyDepartmentsAsync(companyId);
         return result.ToActionResult();
     }
 

@@ -5,14 +5,22 @@ using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories
 {
-    public class DepartmentRepository(AppDbContext context) 
+    public class DepartmentRepository(AppDbContext context)
         : BasicRepository<Department, int>(context), IDepartmentRepository
     {
         public async Task<IEnumerable<DepartmentMember>> GetEmployeesAsync(int id)
         {
             return await _context.DepartmentMembers
                 .Where(dm => dm.DepartmentId == id)
-                .Include(dm=> dm.CompanyUser)
+                .Include(dm => dm.CompanyUser)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Department>> GetByCompanyAsync(int companyId)
+        {
+            return await _context.Departments
+                .Where(d => d.CompanyId == companyId)
+                .OrderBy(d => d.Name)
                 .ToListAsync();
         }
     }

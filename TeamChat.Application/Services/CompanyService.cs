@@ -248,6 +248,13 @@ public class CompanyService(ICompanyRepository companyRepository,
         return ResponseModel<CompanyResponse>.Success(new CompanyResponse(company));
     }
 
+    public async Task<ResponseModel<List<CreateCompanyDepartmentResponse>>> GetCompanyDepartmentsAsync(int companyId)
+    {
+        var departments = await _deprtmentRepository.GetByCompanyAsync(companyId);
+        return ResponseModel<List<CreateCompanyDepartmentResponse>>.Success(
+            departments.Select(d => new CreateCompanyDepartmentResponse(d)).ToList());
+    }
+
     public async Task<ResponseModel<List<PositionWithInviteResponse>>> GetUserPositionsAsync(Guid userId, int companyId)
     {
         var positions = await _positionRepository.GetUserPositionsAsync(userId, companyId);

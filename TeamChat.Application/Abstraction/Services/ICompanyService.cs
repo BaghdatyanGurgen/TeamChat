@@ -20,4 +20,5 @@ public interface ICompanyService
     Task<ResponseModel> ArchiveCompanyAsync(int companyId, Guid requestedBy);
     Task<ResponseModel<CompanyResponse>> JoinCompanyByInviteAsync(Guid userId, JoinCompanyByInviteRequest request);
     Task<ResponseModel<List<PositionWithInviteResponse>>> GetUserPositionsAsync(Guid userId, int companyId);
+    Task<ResponseModel<List<CreateCompanyDepartmentResponse>>> GetCompanyDepartmentsAsync(int companyId);
 }
