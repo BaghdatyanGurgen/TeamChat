@@ -5,7 +5,7 @@ namespace TeamChat.Application.Abstraction.Services;
 
 public interface IChatService
 {
-    Task<ResponseModel<ChatResponse>> CreateChatAsync(Guid userId, CreateChatRequest request);
+    Task<ResponseModel<CreateChatResponse>> CreateChatAsync(Guid userId, CreateChatRequest request);
     Task EditMessageAsync(Guid messageId, string newContent, Guid editedBy);
     Task DeleteMessageAsync(Guid messageId, Guid deletedBy);
     Task MarkMessageAsReadAsync(Guid chatId, Guid messageId, Guid userId);

@@ -36,7 +36,7 @@ public class MessageService(
             ChatId = chat.Id,
             SenderId = userId,
             Sender = user,
-            Content = request.Content,
+            Content = request.Content ?? "",
             SentAt = DateTime.UtcNow
         };
 

@@ -25,7 +25,7 @@ public class ChatService(IChatRepository chatRepository,
     private readonly ICompanyRepository _companyRepository = companyRepository;
     private readonly IChatMemberRepository _chatMemberRepository = chatMemberRepository;
 
-    public async Task<ResponseModel<ChatResponse>> CreateChatAsync(Guid userId, CreateChatRequest request)
+    public async Task<ResponseModel<CreateChatResponse>> CreateChatAsync(Guid userId, CreateChatRequest request)
     {
         var companyUser = await _companyUserRepository.GetByUserAndCompany(userId, request.CompanyId)
             ?? throw new CompanyUserNotFoundException();
@@ -93,7 +93,7 @@ public class ChatService(IChatRepository chatRepository,
             await _chatMemberRepository.AddAsync(chatMember);
         }
 
-        return ResponseModel<ChatResponse>.Success(new ChatResponse(chat));
+        return ResponseModel<CreateChatResponse>.Success(new CreateChatResponse(chat, participantIds.Distinct().ToList()));
     }
 
     public async Task<ResponseModel<ChatResponse>> AddUserToChatAsync(Guid userId, Guid chatId, Guid targetUserId)

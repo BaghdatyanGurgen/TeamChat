@@ -2,4 +2,4 @@
 
 namespace TeamChat.Application.DTOs.Message;
 
-public record CreateMessageRequest(Guid ChatId, string Content, IFormFile? Attachment = null);
+public record CreateMessageRequest(Guid ChatId, string? Content, IFormFile? Attachment = null);

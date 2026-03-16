@@ -26,4 +26,14 @@ public class ChatHub : Hub
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, chatId);
     }
+
+    public async Task JoinCompany(string companyId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"company-{companyId}");
+    }
+
+    public async Task LeaveCompany(string companyId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"company-{companyId}");
+    }
 }

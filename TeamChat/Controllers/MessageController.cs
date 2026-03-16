@@ -17,7 +17,7 @@ public class MessageController(IMessageService messageService) : BaseController
     [Authorize]
     [HttpPost("send")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> SendMessage([FromForm] Guid chatId, [FromForm] string content, IFormFile? attachment)
+    public async Task<IActionResult> SendMessage([FromForm] Guid chatId, [FromForm] string? content, IFormFile? attachment)
     {
         var request = new CreateMessageRequest(chatId, content, attachment);
         var result = await _messageService.CreateMessageAsync(CurrentUserId, request);
