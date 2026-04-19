@@ -1,13 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TeamChat.Application.Abstraction.Infrastructure.File;
-using TeamChat.Application.Abstraction.Infrastructure.Repositories;
-using TeamChat.Application.Abstraction.Services;
+﻿using TeamChat.Domain.Enums;
+using TeamChat.Domain.Entities;
 using TeamChat.Application.DTOs;
 using TeamChat.Application.DTOs.Company;
-using TeamChat.Application.DTOs.CompanyUser;
-using TeamChat.Domain.Entities;
-using TeamChat.Domain.Enums;
 using TeamChat.Domain.Models.Exceptions;
+using TeamChat.Application.DTOs.CompanyUser;
+using TeamChat.Application.Abstraction.Services;
+using TeamChat.Application.Abstraction.Infrastructure.File;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Application.Services;
 
@@ -17,6 +16,8 @@ public class CompanyService(ICompanyRepository companyRepository,
                             ICompanyUserRepository companyUserRepository,
                             IChatRepository chatRepository,
                             IChatMemberRepository chatMemberRepository,
+                            IChatPositionAccessRepository chatPositionAccessRepository,
+                            IPositionHierarchyService positionHierarchyService,
                             IFileService fileService) : ICompanyService
 {
     private readonly ICompanyRepository _companyRepository = companyRepository;
@@ -26,6 +27,8 @@ public class CompanyService(ICompanyRepository companyRepository,
     private readonly ICompanyUserRepository _companyUserRepository = companyUserRepository;
     private readonly IChatMemberRepository _chatMemberRepository = chatMemberRepository;
     private readonly IChatRepository _chatRepository = chatRepository;
+    private readonly IChatPositionAccessRepository _chatPositionAccessRepository = chatPositionAccessRepository;
+    private readonly IPositionHierarchyService _positionHierarchyService = positionHierarchyService;
 
     public async Task<ResponseModel<CompanyResponse>> CreateCompanyAsync(Guid directorId, CreateCompanyRequest request)
     {
@@ -208,7 +211,8 @@ public class CompanyService(ICompanyRepository companyRepository,
     {
         throw new NotImplementedException();
     }
-    public async Task<ResponseModel<CompanyResponse>> JoinCompanyByInviteAsync(Guid userId, JoinCompanyByInviteRequest request)
+    public async Task<ResponseModel<CompanyResponse>> JoinCompanyByInviteAsync(
+    Guid userId, JoinCompanyByInviteRequest request)
     {
         var position = await _positionRepository.GetByInviteCodeAsync(request.InviteCode);
 
@@ -229,8 +233,10 @@ public class CompanyService(ICompanyRepository companyRepository,
             IsActive = true
         };
 
-        var departmentChats = await _chatRepository.GetByDepartment(position.DepartmentId);
+        await _companyUserRepository.AddAsync(companyUser);
 
+        // 1. Чаты департамента (как раньше)
+        var departmentChats = await _chatRepository.GetByDepartment(position.DepartmentId);
         foreach (var departmentChat in departmentChats)
         {
             await _chatMemberRepository.AddAsync(new ChatMember
@@ -240,7 +246,49 @@ public class CompanyService(ICompanyRepository companyRepository,
             });
         }
 
-        await _companyUserRepository.AddAsync(companyUser);
+        // 2. Чаты через позицию (ChatPositionAccess)
+        var positionChats = await _chatPositionAccessRepository
+            .GetChatsByPositionAsync(position.Id);
+
+        foreach (var chat in positionChats)
+        {
+            var existing = await _chatMemberRepository
+                .GetByUserAndChatAsync(userId, chat.Id);
+
+            if (existing == null)
+            {
+                await _chatMemberRepository.AddAsync(new ChatMember
+                {
+                    ChatId = chat.Id,
+                    UserId = userId
+                });
+            }
+        }
+
+        // 3. Чаты через дочерние позиции (наследование — руководитель видит всё)
+        var descendantPositions = await _positionHierarchyService
+            .GetDescendantPositionsAsync(position.Id);
+
+        foreach (var descendant in descendantPositions)
+        {
+            var descendantChats = await _chatPositionAccessRepository
+                .GetChatsByPositionAsync(descendant.Id);
+
+            foreach (var chat in descendantChats)
+            {
+                var existing = await _chatMemberRepository
+                    .GetByUserAndChatAsync(userId, chat.Id);
+
+                if (existing == null)
+                {
+                    await _chatMemberRepository.AddAsync(new ChatMember
+                    {
+                        ChatId = chat.Id,
+                        UserId = userId
+                    });
+                }
+            }
+        }
 
         var company = await _companyRepository.GetByIdAsync(position.CompanyId)
             ?? throw new Exception("Company not found");
@@ -263,5 +311,23 @@ public class CompanyService(ICompanyRepository companyRepository,
             .ToList();
 
         return ResponseModel<List<PositionWithInviteResponse>>.Success(dtoList);
+    }
+
+    public async Task<ResponseModel<List<CompanyMemberResponse>>> GetCompanyMembersAsync(Guid userId, int companyId)
+    {
+        var companyUser = await _companyUserRepository.GetByUserAndCompany(userId, companyId)
+            ?? throw new CompanyUserNotFoundException();
+
+        var employees = await _companyRepository.GetEmployeesAsync(companyId);
+
+        var result = employees.Select(cu => new CompanyMemberResponse(
+            cu.UserId,
+            cu.User.FirstName ?? "",
+            cu.User.LastName ?? "",
+            cu.User.AvatarUrl,
+            cu.Position.Title
+        )).ToList();
+
+        return ResponseModel<List<CompanyMemberResponse>>.Success(result);
     }
 }

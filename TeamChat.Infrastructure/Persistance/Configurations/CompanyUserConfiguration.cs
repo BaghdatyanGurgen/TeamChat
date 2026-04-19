@@ -11,15 +11,15 @@ public class CompanyUserConfiguration : IEntityTypeConfiguration<CompanyUser>
         builder.HasKey(cu => cu.Id);
 
         builder.HasOne(cu => cu.User)
-               .WithMany()
+               .WithMany(u => u.CompanyMemberships)
                .HasForeignKey(cu => cu.UserId);
 
         builder.HasOne(cu => cu.Company)
-               .WithMany()
+               .WithMany(c => c.Members)
                .HasForeignKey(cu => cu.CompanyId);
 
         builder.HasOne(cu => cu.Position)
-               .WithMany()
+               .WithMany(p => p.AssignedUsers)
                .HasForeignKey(cu => cu.PositionId);
 
         builder.HasIndex(cu => new { cu.UserId, cu.CompanyId }).IsUnique();

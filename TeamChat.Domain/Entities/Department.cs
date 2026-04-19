@@ -13,7 +13,7 @@ public class Department
     // Foreign Keys
     public int CompanyId { get; set; }
     public Company Company { get; set; } = null!;
-    
+
     // Navigation Properties
     public ICollection<Chat> Chats { get; set; } = [];
     public ICollection<DepartmentMember> Members { get; set; } = [];

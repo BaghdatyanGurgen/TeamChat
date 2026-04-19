@@ -1,15 +1,15 @@
 ﻿using System.Text;
+using TeamChat.API.Hubs;
 using TeamChat.API.Swagger;
 using TeamChat.Application;
 using TeamChat.Infrastructure;
+using TeamChat.API.Middlewares;
 using Microsoft.OpenApi.Models;
 using TeamChat.Infrastructure.Email;
 using Microsoft.IdentityModel.Tokens;
 using TeamChat.Infrastructure.RabbitMQ;
 using TeamChat.Infrastructure.Security.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using TeamChat.API.Hubs;
-using TeamChat.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;

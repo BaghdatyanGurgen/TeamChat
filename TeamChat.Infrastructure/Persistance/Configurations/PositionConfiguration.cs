@@ -13,7 +13,7 @@ public class PositionConfiguration : IEntityTypeConfiguration<Position>
         builder.Property(p => p.InviteCode).IsRequired();
 
         builder.HasOne(p => p.Company)
-               .WithMany()
+               .WithMany(c => c.Positions)
                .HasForeignKey(p => p.CompanyId);
 
         builder.HasOne(p => p.ParentPosition)

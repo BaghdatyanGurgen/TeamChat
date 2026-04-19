@@ -52,7 +52,7 @@ public class UserService(IUserRepository userRepository,
 
         var token = user.EmailConfirmationCode;
         await _userRepository.AddAsync(user);
-        var verificationLink = _emailSender.BuildVerificationLink(user.Id, ref token);
+        var verificationLink = _emailSender.BuildVerificationMessage(user.Id, ref token);
         await _emailSender.SendEmailAsync(user.Email, "Confirmation",
             $"Compleat registration: {verificationLink}");
 

@@ -8,7 +8,7 @@ public class CompanyUser
     // Properties
     public bool IsActive { get; set; } = true;
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
-    
+
     // Foreign Keys
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;

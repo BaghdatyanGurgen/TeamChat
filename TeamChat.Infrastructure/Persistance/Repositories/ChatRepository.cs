@@ -1,6 +1,7 @@
-﻿using TeamChat.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Domain.Entities;
+using TeamChat.Domain.Enums;
 using TeamChat.Infrastructure.Persistance.Repositories.Base;
 
 namespace TeamChat.Infrastructure.Persistance.Repositories;
@@ -39,4 +40,13 @@ public class ChatRepository(AppDbContext context)
             .Where(c => c.DepartmentId == departmentId)
             .ToListAsync();
     }
+    public async Task<Chat?> GetPrivateChatAsync(Guid userId1, Guid userId2, int companyId)
+    => await _context.Chats
+        .Include(c => c.Members)
+        .FirstOrDefaultAsync(c =>
+            c.CompanyId == companyId &&
+            c.Scope == ChatScope.Private &&
+            c.Members.Count == 2 &&
+            c.Members.Any(m => m.UserId == userId1) &&
+            c.Members.Any(m => m.UserId == userId2));
 }

@@ -9,25 +9,23 @@ using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Application.Services;
 
-public class ChatService(IChatRepository chatRepository,
-                         ICompanyUserRepository companyUserRepository,
-                         IDepartmentRepository departmentRepository,
-                         ITeamRepository teamRepository,
-                         ICompanyRepository companyRepository,
-                         IMessageRepository messageRepository,
-                         IChatMemberRepository chatMemberRepository) : IChatService
+public class ChatService(
+    IChatRepository chatRepository,
+    ICompanyUserRepository companyUserRepository,
+    IDepartmentRepository departmentRepository,
+    ITeamRepository teamRepository,
+    ICompanyRepository companyRepository,
+    IMessageRepository messageRepository,
+    IChatMemberRepository chatMemberRepository,
+    IChatPositionAccessRepository chatPositionAccessRepository,
+    IPositionHierarchyService positionHierarchyService,
+    IPositionRepository positionRepository) : IChatService
 {
-    private readonly IChatRepository _chatRepository = chatRepository;
-    private readonly IMessageRepository _messageRepository = messageRepository;
-    private readonly ICompanyUserRepository _companyUserRepository = companyUserRepository;
-    private readonly IDepartmentRepository _departmentRepository = departmentRepository;
-    private readonly ITeamRepository _teamRepository = teamRepository;
-    private readonly ICompanyRepository _companyRepository = companyRepository;
-    private readonly IChatMemberRepository _chatMemberRepository = chatMemberRepository;
+    // ==================== СОЗДАНИЕ ЧАТОВ ====================
 
     public async Task<ResponseModel<CreateChatResponse>> CreateChatAsync(Guid userId, CreateChatRequest request)
     {
-        var companyUser = await _companyUserRepository.GetByUserAndCompany(userId, request.CompanyId)
+        var companyUser = await companyUserRepository.GetByUserAndCompany(userId, request.CompanyId)
             ?? throw new CompanyUserNotFoundException();
 
         if ((companyUser.Position.Permissions & PositionPermissions.CreateChat) == 0)
@@ -38,7 +36,7 @@ public class ChatService(IChatRepository chatRepository,
         switch (request.Scope)
         {
             case ChatScope.Company:
-                var companyUsers = await _companyRepository.GetEmployeesAsync(request.CompanyId);
+                var companyUsers = await companyRepository.GetEmployeesAsync(request.CompanyId);
                 participantIds.AddRange(companyUsers.Select(u => u.UserId));
                 break;
 
@@ -46,13 +44,13 @@ public class ChatService(IChatRepository chatRepository,
                 if (request.DepartmentId is null)
                     throw new ValidationException("DepartmentId is required for department chat");
 
-                var dep = await _departmentRepository.GetByIdAsync(request.DepartmentId.Value)
+                var dep = await departmentRepository.GetByIdAsync(request.DepartmentId.Value)
                     ?? throw new DepartmentNotFoundException();
 
                 if (dep.CompanyId != request.CompanyId)
                     throw new ValidationException("Department does not belong to this company");
 
-                var depUsers = await _departmentRepository.GetEmployeesAsync(dep.Id);
+                var depUsers = await departmentRepository.GetEmployeesAsync(dep.Id);
                 participantIds.AddRange(depUsers.Select(u => u.CompanyUser.UserId));
                 break;
 
@@ -60,13 +58,13 @@ public class ChatService(IChatRepository chatRepository,
                 if (request.TeamId is null)
                     throw new ValidationException("TeamId is required for team chat");
 
-                var team = await _teamRepository.GetByIdAsync(request.TeamId.Value)
+                var team = await teamRepository.GetByIdAsync(request.TeamId.Value)
                     ?? throw new TeamNotFoundException();
 
                 if (team.CompanyId != request.CompanyId)
                     throw new ValidationException("Team does not belong to this company");
 
-                var teamUsers = await _teamRepository.GetEmployeesAsync(team.Id);
+                var teamUsers = await teamRepository.GetEmployeesAsync(team.Id);
                 participantIds.AddRange(teamUsers.Select(u => u.CompanyUser.UserId));
                 break;
 
@@ -74,152 +72,219 @@ public class ChatService(IChatRepository chatRepository,
                 throw new ValidationException("Invalid chat scope");
         }
 
-        var chat = await _chatRepository.AddAsync(new Chat
+        var chat = await chatRepository.AddAsync(new Chat
         {
             Name = request.Name,
             CompanyId = request.CompanyId,
             OwnerId = userId,
+            Scope = request.Scope,
             DepartmentId = request.DepartmentId,
             TeamId = request.TeamId,
         });
 
+        // Добавляем участников
         foreach (var id in participantIds.Distinct())
         {
-            var chatMember = new ChatMember
+            await chatMemberRepository.AddAsync(new ChatMember
             {
                 ChatId = chat.Id,
                 UserId = id,
-            };
-            await _chatMemberRepository.AddAsync(chatMember);
+            });
         }
 
-        return ResponseModel<CreateChatResponse>.Success(new CreateChatResponse(chat, participantIds.Distinct().ToList()));
+        // Привязываем позиции если указаны
+        if (request.PositionIds is { Count: > 0 })
+        {
+            foreach (var positionId in request.PositionIds.Distinct())
+            {
+                var position = await positionRepository.GetByIdAsync(positionId);
+                if (position == null || position.CompanyId != request.CompanyId)
+                    continue;
+
+                await chatPositionAccessRepository.AddAsync(new ChatPositionAccess
+                {
+                    ChatId = chat.Id,
+                    PositionId = positionId
+                });
+
+                // Добавляем всех юзеров на этой позиции как участников
+                await AddPositionUsersToChat(chat.Id, positionId, participantIds);
+            }
+        }
+
+        return ResponseModel<CreateChatResponse>.Success(
+            new CreateChatResponse(chat, participantIds.Distinct().ToList()));
     }
 
-    public async Task<ResponseModel<ChatResponse>> AddUserToChatAsync(Guid userId, Guid chatId, Guid targetUserId)
+    public async Task<ResponseModel<CreateChatResponse>> CreatePrivateChatAsync(
+        Guid userId, Guid targetUserId, int companyId)
     {
-        var chat = await _chatRepository.GetByIdAsync(chatId) ?? throw new ChatNotFoundException();
+        // Оба должны быть в компании
+        var currentUser = await companyUserRepository.GetByUserAndCompany(userId, companyId)
+            ?? throw new CompanyUserNotFoundException();
 
-        var companyUser = await _companyUserRepository.GetByUserAndCompany(userId, chat.CompanyId)
+        var targetUser = await companyUserRepository.GetByUserAndCompany(targetUserId, companyId)
+            ?? throw new ValidationException("Target user is not in this company");
+
+        // Проверяем, нет ли уже приватного чата между ними
+        var existingChat = await chatRepository.GetPrivateChatAsync(userId, targetUserId, companyId);
+        if (existingChat != null)
+            return ResponseModel<CreateChatResponse>.Success(
+                new CreateChatResponse(existingChat, [userId, targetUserId]));
+
+        var chat = await chatRepository.AddAsync(new Chat
+        {
+            Name = $"",  // имя формируется на фронте
+            CompanyId = companyId,
+            OwnerId = userId,
+            Scope = ChatScope.Private,
+        });
+
+        await chatMemberRepository.AddAsync(new ChatMember { ChatId = chat.Id, UserId = userId });
+        await chatMemberRepository.AddAsync(new ChatMember { ChatId = chat.Id, UserId = targetUserId });
+
+        return ResponseModel<CreateChatResponse>.Success(
+            new CreateChatResponse(chat, [userId, targetUserId]));
+    }
+
+    // ==================== ПРИВЯЗКА ПОЗИЦИЙ ====================
+
+    public async Task<ResponseModel> AttachPositionToChatAsync(
+        Guid userId, Guid chatId, int positionId, PositionPermissions? permissionOverride = null)
+    {
+        var chat = await chatRepository.GetByIdAsync(chatId)
+            ?? throw new ChatNotFoundException();
+
+        var companyUser = await companyUserRepository.GetByUserAndCompany(userId, chat.CompanyId)
             ?? throw new NoAccessException();
 
-        if ((companyUser.Position.Permissions & PositionPermissions.AddChatMember) == 0)
+        // Только создатель чата или тот у кого есть ManageMembers
+        if (chat.OwnerId != userId &&
+            (companyUser.Position.Permissions & PositionPermissions.ManageMembers) == 0)
             throw new NoAccessException();
 
-        var existingMember = await _chatMemberRepository.GetByUserAndChatAsync(targetUserId, chatId);
-        if (existingMember != null)
-            return ResponseModel<ChatResponse>.Fail("User already in chat");
+        var position = await positionRepository.GetByIdAsync(positionId)
+            ?? throw new ValidationException("Position not found");
 
-        var chatMember = new ChatMember
+        if (position.CompanyId != chat.CompanyId)
+            throw new ValidationException("Position does not belong to this company");
+
+        // Нельзя привязывать позицию к приватному чату
+        if (chat.Scope == ChatScope.Private)
+            throw new ValidationException("Cannot attach position to private chat");
+
+        // Проверяем, не привязана ли уже
+        var existing = await chatPositionAccessRepository.GetByPositionAndChatAsync(positionId, chatId);
+        if (existing != null)
+            return ResponseModel.Fail("Position is already attached to this chat");
+
+        await chatPositionAccessRepository.AddAsync(new ChatPositionAccess
         {
             ChatId = chatId,
-            UserId = targetUserId
-        };
-        await _chatMemberRepository.AddAsync(chatMember);
+            PositionId = positionId,
+            PermissionOverride = permissionOverride
+        });
 
-        return ResponseModel<ChatResponse>.Success(new ChatResponse(chat));
+        // Добавляем всех юзеров на этой позиции в чат
+        await AddPositionUsersToChat(chatId, positionId, []);
+
+        // Добавляем юзеров с родительских позиций (наследование вверх)
+        var ancestors = await positionHierarchyService.GetAncestorPositionsAsync(positionId);
+        foreach (var ancestor in ancestors)
+        {
+            await AddPositionUsersToChat(chatId, ancestor.Id, []);
+        }
+
+        return ResponseModel.Success("Position attached successfully");
     }
 
-    public async Task<ResponseModel<ChatResponse>> RemoveUserFromChatAsync(Guid userId, Guid chatId, Guid targetUserId)
+    public async Task<ResponseModel> DetachPositionFromChatAsync(
+        Guid userId, Guid chatId, int positionId)
     {
-        var chat = await _chatRepository.GetByIdAsync(chatId) ?? throw new ChatNotFoundException();
+        var chat = await chatRepository.GetByIdAsync(chatId)
+            ?? throw new ChatNotFoundException();
 
-        var companyUser = await _companyUserRepository.GetByUserAndCompany(userId, chat.CompanyId)
+        var companyUser = await companyUserRepository.GetByUserAndCompany(userId, chat.CompanyId)
             ?? throw new NoAccessException();
 
-        if ((companyUser.Position.Permissions & PositionPermissions.RemoveChatMember) == 0)
+        if (chat.OwnerId != userId &&
+            (companyUser.Position.Permissions & PositionPermissions.ManageMembers) == 0)
             throw new NoAccessException();
 
-        var chatMember = await _chatMemberRepository.GetByUserAndChatAsync(targetUserId, chatId)
-            ?? throw new ValidationException("User is not a member of this chat");
+        var access = await chatPositionAccessRepository.GetByPositionAndChatAsync(positionId, chatId)
+            ?? throw new ValidationException("Position is not attached to this chat");
 
-        await _chatMemberRepository.RemoveAsync(chatMember);
+        await chatPositionAccessRepository.RemoveAsync(access);
 
-        return ResponseModel<ChatResponse>.Success(new ChatResponse(chat));
+        // Удаляем из чата юзеров, которые были там только через эту позицию
+        await RemoveOrphanedChatMembers(chatId);
+
+        return ResponseModel.Success("Position detached successfully");
     }
 
-    public async Task<ResponseModel<ChatResponse>> SetChatTopicAsync(Guid userId, Guid chatId, string topic)
-    {
-        var chat = await _chatRepository.GetByIdAsync(chatId) ?? throw new ChatNotFoundException();
-
-        if (chat.OwnerId != userId)
-            throw new NoAccessException();
-
-        chat.Topic = topic;
-        await _chatRepository.UpdateAsync(chat);
-
-        return ResponseModel<ChatResponse>.Success(new ChatResponse(chat));
-    }
-
-    public async Task<ResponseModel<ChatResponse>> PinMessageAsync(Guid userId, Guid chatId, Guid messageId)
-    {
-        var chat = await _chatRepository.GetByIdAsync(chatId) ?? throw new ChatNotFoundException();
-
-        var member = await _chatMemberRepository.GetByUserAndChatAsync(userId, chatId)
-            ?? throw new NoAccessException();
-
-        var message = await _messageRepository.GetByIdAsync(messageId)
-            ?? throw new ValidationException("Message not found");
-
-        chat.PinnedMessageId = message.Id;
-        await _chatRepository.UpdateAsync(chat);
-
-        return ResponseModel<ChatResponse>.Success(new ChatResponse(chat));
-    }
+    // ==================== СООБЩЕНИЯ ====================
 
     public async Task EditMessageAsync(Guid messageId, string newContent, Guid editedBy)
     {
-        var message = await _messageRepository.GetByIdAsync(messageId)
-                      ?? throw new ValidationException("Message not found");
+        var message = await messageRepository.GetByIdAsync(messageId)
+            ?? throw new ValidationException("Message not found");
 
-        var companyUser = await _companyUserRepository.GetByUserAndCompany(editedBy, message.Chat.CompanyId)
-                           ?? throw new NoAccessException();
+        var companyUser = await companyUserRepository.GetByUserAndCompany(editedBy, message.Chat.CompanyId)
+            ?? throw new NoAccessException();
 
-        var permissions = companyUser.Position.Permissions;
+        // Свои сообщения может редактировать любой, чужие — по правам
+        if (message.SenderId != editedBy)
+        {
+            var permissions = await positionHierarchyService
+                .GetEffectivePermissionsAsync(companyUser.PositionId, message.ChatId);
 
-        if (message.SenderId != editedBy && (permissions & PositionPermissions.EditMessage) == 0)
-            throw new NoAccessException();
+            if ((permissions & PositionPermissions.EditMessage) == 0)
+                throw new NoAccessException();
+        }
 
         message.Content = newContent;
         message.EditedAt = DateTime.UtcNow;
-
-        await _messageRepository.UpdateAsync(message);
+        await messageRepository.UpdateAsync(message);
     }
 
     public async Task DeleteMessageAsync(Guid messageId, Guid deletedBy)
     {
-        var message = await _messageRepository.GetByIdAsync(messageId)
-                      ?? throw new ValidationException("Message not found");
+        var message = await messageRepository.GetByIdAsync(messageId)
+            ?? throw new ValidationException("Message not found");
 
-        var companyUser = await _companyUserRepository.GetByUserAndCompany(deletedBy, message.Chat.CompanyId)
-                           ?? throw new NoAccessException();
+        var companyUser = await companyUserRepository.GetByUserAndCompany(deletedBy, message.Chat.CompanyId)
+            ?? throw new NoAccessException();
 
-        var permissions = companyUser.Position.Permissions;
+        if (message.SenderId != deletedBy)
+        {
+            var permissions = await positionHierarchyService
+                .GetEffectivePermissionsAsync(companyUser.PositionId, message.ChatId);
 
-        if (message.SenderId != deletedBy && (permissions & PositionPermissions.DeleteMessage) == 0)
-            throw new NoAccessException();
+            if ((permissions & PositionPermissions.DeleteMessage) == 0)
+                throw new NoAccessException();
+        }
 
-        await _messageRepository.RemoveAsync(message);
+        await messageRepository.RemoveAsync(message);
     }
 
     public async Task MarkMessageAsReadAsync(Guid chatId, Guid messageId, Guid userId)
     {
-        var chat = await _chatRepository.GetByIdAsync(chatId)
-                   ?? throw new ValidationException("Chat not found");
+        var chat = await chatRepository.GetByIdAsync(chatId)
+            ?? throw new ValidationException("Chat not found");
 
-        var chatMember = await _chatMemberRepository.GetByUserAndChatAsync(userId, chatId)
-                         ?? throw new NoAccessException();
+        var chatMember = await chatMemberRepository.GetByUserAndChatAsync(userId, chatId)
+            ?? throw new NoAccessException();
 
-        var message = await _messageRepository.GetByIdAsync(messageId)
-                      ?? throw new ValidationException("Message not found");
+        var message = await messageRepository.GetByIdAsync(messageId)
+            ?? throw new ValidationException("Message not found");
 
         if (message.ChatId != chatId)
             throw new ValidationException("Message does not belong to this chat");
 
-        var existingRead = await _messageRepository.GetReadStatusAsync(messageId, userId);
+        var existingRead = await messageRepository.GetReadStatusAsync(messageId, userId);
         if (existingRead == null)
         {
-            await _messageRepository.AddReadStatusAsync(new MessageReadStatus
+            await messageRepository.AddReadStatusAsync(new MessageReadStatus
             {
                 MessageId = messageId,
                 UserId = userId,
@@ -229,43 +294,129 @@ public class ChatService(IChatRepository chatRepository,
         else
         {
             existingRead.ReadAt = DateTime.UtcNow;
-            await _messageRepository.UpdateReadStatusAsync(existingRead);
+            await messageRepository.UpdateReadStatusAsync(existingRead);
         }
     }
 
-    public Task<ResponseModel<IEnumerable<ChatResponse>>> GetUserChatsAsync(Guid userId)
-    {
-        throw new NotImplementedException();
-    }
+    // ==================== ПОЛУЧЕНИЕ ЧАТОВ ====================
 
-    Task<ResponseModel> IChatService.AddUserToChatAsync(Guid chatId, Guid addedBy, Guid newUserId)
+    public async Task<ResponseModel<List<CompanyChatResponse>>> GetUserCompanyChatsAsync(
+        Guid userId, int companyId)
     {
-        throw new NotImplementedException();
-    }
+        var companyUser = await companyUserRepository.GetByUserAndCompany(userId, companyId);
+        if (companyUser == null)
+            throw new CompanyUserNotFoundException();
 
-    Task<ResponseModel> IChatService.RemoveUserFromChatAsync(Guid chatId, Guid removedBy, Guid userId)
-    {
-        throw new NotImplementedException();
-    }
+        // 1. Чаты через прямое членство (ChatMember)
+        var directChats = await chatRepository.GetUserCompanyChatsAsync(userId, companyId);
 
-    public Task<ResponseModel> AssignChatAdminAsync(Guid chatId, Guid userId)
-    {
-        throw new NotImplementedException();
-    }
+        // 2. Чаты через позицию (ChatPositionAccess + наследование)
+        var positionChats = await positionHierarchyService
+            .GetAccessibleChatsAsync(companyUser.PositionId);
 
-    public Task<ResponseModel> DeleteChatAsync(Guid chatId, Guid requestedBy)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<ResponseModel<List<CompanyChatResponse>>> GetUserCompanyChatsAsync(Guid userId, int companyId)
-    {
-        var chats = await _chatRepository.GetUserCompanyChatsAsync(userId, companyId);
-
-        var response = chats
-            .Select(c => new CompanyChatResponse(c.Id, c.Name, c.CreatedAt))
+        // Объединяем и убираем дубли
+        var allChats = directChats
+            .Concat(positionChats.Where(c => c.CompanyId == companyId))
+            .DistinctBy(c => c.Id)
+            .Select(c => new CompanyChatResponse(c.Id, c.Name, c.CreatedAt, c.Scope))
             .ToList();
 
-        return ResponseModel<List<CompanyChatResponse>>.Success(response);
+        return ResponseModel<List<CompanyChatResponse>>.Success(allChats);
+    }
+
+    // ==================== УПРАВЛЕНИЕ ====================
+
+    public async Task<ResponseModel> DeleteChatAsync(Guid chatId, Guid requestedBy)
+    {
+        var chat = await chatRepository.GetByIdAsync(chatId)
+            ?? throw new ChatNotFoundException();
+
+        var companyUser = await companyUserRepository.GetByUserAndCompany(requestedBy, chat.CompanyId)
+            ?? throw new NoAccessException();
+
+        if (chat.OwnerId != requestedBy)
+        {
+            var permissions = await positionHierarchyService
+                .GetEffectivePermissionsAsync(companyUser.PositionId, chatId);
+
+            if ((permissions & PositionPermissions.DeleteChat) == 0)
+                throw new NoAccessException();
+        }
+
+        await chatRepository.RemoveAsync(chat);
+        return ResponseModel.Success("Chat deleted");
+    }
+
+    // ==================== ПРИВАТНЫЕ МЕТОДЫ ====================
+
+    /// Добавляет всех юзеров на данной позиции в чат (если ещё не там)
+    private async Task AddPositionUsersToChat(Guid chatId, int positionId, List<Guid> alreadyAdded)
+    {
+        var position = await positionRepository.GetByIdAsync(positionId);
+        if (position == null) return;
+
+        foreach (var companyUser in position.AssignedUsers)
+        {
+            if (alreadyAdded.Contains(companyUser.UserId))
+                continue;
+
+            var existingMember = await chatMemberRepository
+                .GetByUserAndChatAsync(companyUser.UserId, chatId);
+
+            if (existingMember == null)
+            {
+                await chatMemberRepository.AddAsync(new ChatMember
+                {
+                    ChatId = chatId,
+                    UserId = companyUser.UserId
+                });
+                alreadyAdded.Add(companyUser.UserId);
+            }
+        }
+    }
+
+    /// Удаляет из чата тех, кто не имеет доступа ни через одну привязанную позицию
+    private async Task RemoveOrphanedChatMembers(Guid chatId)
+    {
+        var chat = await chatRepository.GetByIdAsync(chatId);
+        if (chat == null) return;
+
+        // Собираем всех юзеров, которые должны быть в чате через позиции
+        var positionAccess = await chatPositionAccessRepository.GetByChatAsync(chatId);
+        var allowedUserIds = new HashSet<Guid>();
+
+        foreach (var access in positionAccess)
+        {
+            // Юзеры на этой позиции
+            foreach (var cu in access.Position.AssignedUsers)
+                allowedUserIds.Add(cu.UserId);
+
+            // Юзеры на родительских позициях (наследование)
+            var ancestors = await positionHierarchyService
+                .GetAncestorPositionsAsync(access.PositionId);
+
+            foreach (var ancestor in ancestors)
+            {
+                var ancestorPos = await positionRepository.GetByIdAsync(ancestor.Id);
+                if (ancestorPos?.AssignedUsers == null) continue;
+                foreach (var cu in ancestorPos.AssignedUsers)
+                    allowedUserIds.Add(cu.UserId);
+            }
+        }
+
+        // Владелец чата остаётся всегда
+        allowedUserIds.Add(chat.OwnerId);
+
+        // Удаляем тех кто не в списке (но не трогаем приватные чаты)
+        if (chat.Scope == ChatScope.Private) return;
+
+        var members = chat.Members.ToList();
+        foreach (var member in members)
+        {
+            if (!allowedUserIds.Contains(member.UserId))
+            {
+                await chatMemberRepository.RemoveAsync(member);
+            }
+        }
     }
 }

@@ -1,5 +1,5 @@
-﻿using TeamChat.Domain.Entities;
-using TeamChat.Domain.Enums;
+﻿using TeamChat.Domain.Enums;
+using TeamChat.Domain.Entities;
 
 namespace TeamChat.Application.DTOs.Company;
 

@@ -21,6 +21,8 @@ public class CompanyRepository(AppDbContext context)
     {
         return await _context.CompanyUsers
             .Where(cu => cu.CompanyId == companyId)
+            .Include(cu => cu.User)
+            .Include(cu => cu.Position)
             .ToListAsync();
     }
 

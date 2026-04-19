@@ -2,7 +2,7 @@
 using System.Text.Json;
 using TeamChat.Domain.Models.Exceptions;
 
-namespace TeamChat.API.Middleware;
+namespace TeamChat.API.Middlewares;
 
 public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
 {

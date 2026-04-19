@@ -30,6 +30,7 @@ namespace TeamChat.Infrastructure
                        .AddScoped<IChatMemberRepository, ChatMemberRepository>()
                        .AddScoped<ITeamRepository, TeamRepository>()
                        .AddScoped<IMessageRepository, MessageRepository>()
+                       .AddScoped<IChatPositionAccessRepository, ChatPositionAccessRepository>()
                        .AddScoped<IDepartmentRepository, DepartmentRepository>();
 
         public static IServiceCollection AddMessagingInfrastructure(this IServiceCollection services)

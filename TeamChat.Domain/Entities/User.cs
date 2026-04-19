@@ -4,7 +4,7 @@ public class User
 {
     // Primary Key
     public Guid Id { get; set; } = Guid.NewGuid();
- 
+
     // Properties
     public string Email { get; set; } = string.Empty;
     public bool EmailConfirmed { get; set; } = false;

@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using TeamChat.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using TeamChat.API.Extensions;
-using TeamChat.Application.Abstraction.Services;
 using TeamChat.Application.DTOs.User;
+using Microsoft.AspNetCore.Authorization;
+using TeamChat.Application.Abstraction.Services;
 
 namespace TeamChat.API.Controllers;
 

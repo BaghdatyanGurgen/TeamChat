@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TeamChat.Infrastructure.Persistance;
@@ -11,9 +12,11 @@ using TeamChat.Infrastructure.Persistance;
 namespace TeamChat.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260411132725_AddPositionBasedChatAccess")]
+    partial class AddPositionBasedChatAccess
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -44,11 +47,8 @@ namespace TeamChat.Infrastructure.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("PinnedMessageId")
+                    b.Property<Guid>("PinnedMessageId")
                         .HasColumnType("uuid");
-
-                    b.Property<int>("Scope")
-                        .HasColumnType("integer");
 
                     b.Property<int?>("TeamId")
                         .HasColumnType("integer");
@@ -117,33 +117,6 @@ namespace TeamChat.Infrastructure.Migrations
                     b.ToTable("ChatMemberRoles");
                 });
 
-            modelBuilder.Entity("TeamChat.Domain.Entities.ChatPositionAccess", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<Guid>("ChatId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("PermissionOverride")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("PositionId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChatId");
-
-                    b.HasIndex("PositionId", "ChatId")
-                        .IsUnique();
-
-                    b.ToTable("ChatPositionAccess");
-                });
-
             modelBuilder.Entity("TeamChat.Domain.Entities.ChatRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -208,6 +181,9 @@ namespace TeamChat.Infrastructure.Migrations
                     b.Property<int>("CompanyId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("CompanyId1")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -217,14 +193,26 @@ namespace TeamChat.Infrastructure.Migrations
                     b.Property<int>("PositionId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("PositionId1")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UserId1")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
 
+                    b.HasIndex("CompanyId1");
+
                     b.HasIndex("PositionId");
+
+                    b.HasIndex("PositionId1");
+
+                    b.HasIndex("UserId1");
 
                     b.HasIndex("UserId", "CompanyId")
                         .IsUnique();
@@ -380,6 +368,9 @@ namespace TeamChat.Infrastructure.Migrations
                     b.Property<int>("CompanyId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("CompanyId1")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("CreatedByUserId")
                         .HasColumnType("uuid");
 
@@ -403,6 +394,8 @@ namespace TeamChat.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId1");
 
                     b.HasIndex("DepartmentId");
 
@@ -609,25 +602,6 @@ namespace TeamChat.Infrastructure.Migrations
                     b.Navigation("ChatRole");
                 });
 
-            modelBuilder.Entity("TeamChat.Domain.Entities.ChatPositionAccess", b =>
-                {
-                    b.HasOne("TeamChat.Domain.Entities.Chat", "Chat")
-                        .WithMany("PositionAccess")
-                        .HasForeignKey("ChatId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TeamChat.Domain.Entities.Position", "Position")
-                        .WithMany("ChatAccess")
-                        .HasForeignKey("PositionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Chat");
-
-                    b.Navigation("Position");
-                });
-
             modelBuilder.Entity("TeamChat.Domain.Entities.ChatRole", b =>
                 {
                     b.HasOne("TeamChat.Domain.Entities.Chat", "Chat")
@@ -653,22 +627,34 @@ namespace TeamChat.Infrastructure.Migrations
             modelBuilder.Entity("TeamChat.Domain.Entities.CompanyUser", b =>
                 {
                     b.HasOne("TeamChat.Domain.Entities.Company", "Company")
-                        .WithMany("Members")
+                        .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TeamChat.Domain.Entities.Company", null)
+                        .WithMany("Members")
+                        .HasForeignKey("CompanyId1");
+
                     b.HasOne("TeamChat.Domain.Entities.Position", "Position")
-                        .WithMany("AssignedUsers")
+                        .WithMany()
                         .HasForeignKey("PositionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TeamChat.Domain.Entities.Position", null)
+                        .WithMany("AssignedUsers")
+                        .HasForeignKey("PositionId1");
+
                     b.HasOne("TeamChat.Domain.Entities.User", "User")
-                        .WithMany("CompanyMemberships")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("TeamChat.Domain.Entities.User", null)
+                        .WithMany("CompanyMemberships")
+                        .HasForeignKey("UserId1");
 
                     b.Navigation("Company");
 
@@ -759,10 +745,14 @@ namespace TeamChat.Infrastructure.Migrations
             modelBuilder.Entity("TeamChat.Domain.Entities.Position", b =>
                 {
                     b.HasOne("TeamChat.Domain.Entities.Company", "Company")
-                        .WithMany("Positions")
+                        .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("TeamChat.Domain.Entities.Company", null)
+                        .WithMany("Positions")
+                        .HasForeignKey("CompanyId1");
 
                     b.HasOne("TeamChat.Domain.Entities.Department", "Department")
                         .WithMany()
@@ -827,8 +817,6 @@ namespace TeamChat.Infrastructure.Migrations
 
                     b.Navigation("Messages");
 
-                    b.Navigation("PositionAccess");
-
                     b.Navigation("Roles");
                 });
 
@@ -868,8 +856,6 @@ namespace TeamChat.Infrastructure.Migrations
             modelBuilder.Entity("TeamChat.Domain.Entities.Position", b =>
                 {
                     b.Navigation("AssignedUsers");
-
-                    b.Navigation("ChatAccess");
 
                     b.Navigation("SubPositions");
                 });

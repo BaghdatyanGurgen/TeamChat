@@ -9,6 +9,7 @@ public static class ResponseExtensions
         => response.IsSuccess ? 
         new OkObjectResult(response) : 
         new BadRequestObjectResult(response.Message);
+
     public static IActionResult ToActionResult(this ResponseModel response)
         => response.IsSuccess ? 
         new OkObjectResult(response) : 

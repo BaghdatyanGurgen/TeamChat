@@ -21,6 +21,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<CompanyUser> CompanyUsers => Set<CompanyUser>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
+    public DbSet<ChatPositionAccess> ChatPositionAccess => Set<ChatPositionAccess>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

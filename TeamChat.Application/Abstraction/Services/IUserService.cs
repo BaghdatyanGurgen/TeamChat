@@ -14,7 +14,7 @@ public interface IUserService
     Task<ResponseModel<AuthResponse>> RefreshTokenAsync(string token, string refreshToken);
     Task<ResponseModel<string>> LogoutAsync(Guid userGuidId);
     Task<ResponseModel<UserProfileResponse>> GetUserProfileAsync(Guid userId);
-    Task<ResponseModel> ChangePasswordAsync(Guid userId, string oldPassword, string newPassword); 
+    Task<ResponseModel> ChangePasswordAsync(Guid userId, string oldPassword, string newPassword);
     Task<ResponseModel> ChangeEmailAsync(Guid userId, string newEmail);
     Task<ResponseModel<IEnumerable<RoleResponse>>> GetUserRolesAsync(Guid userId);
     Task<ResponseModel<IEnumerable<UserActivityResponse>>> GetUserActivityAsync(Guid userId);

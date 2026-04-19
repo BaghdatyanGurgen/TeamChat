@@ -11,5 +11,10 @@ public enum PositionPermissions
     AddChatMember = 1 << 3,
     RemoveChatMember = 1 << 4,
     EditMessage = 1 << 5,
-    DeleteMessage = 1 << 6
+    DeleteMessage = 1 << 6,
+    ViewChat = 1 << 7,
+    SendMessage = 1 << 8,
+    PinMessage = 1 << 9,
+    ManageMembers = 1 << 10,
+    DeleteChat = 1 << 11,
 }

@@ -2,6 +2,6 @@
 
 public interface IEmailSender
 {
-    string BuildVerificationLink(Guid id, ref string? token);
+    string BuildVerificationMessage(Guid id, ref string? token);
     Task SendEmailAsync(string? to, string subject, string htmlMessage);
 }

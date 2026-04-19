@@ -2,6 +2,7 @@
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace TeamChat.API.Swagger;
+
 public class FileUploadOperationFilter : IOperationFilter
 {
     public void Apply(OpenApiOperation operation, OperationFilterContext context)

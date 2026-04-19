@@ -1,9 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using TeamChat.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using TeamChat.API.Extensions;
-using TeamChat.Application.Abstraction.Services;
-using TeamChat.Application.DTOs;
 using TeamChat.Application.DTOs.Company;
+using Microsoft.AspNetCore.Authorization;
+using TeamChat.Application.Abstraction.Services;
 
 namespace TeamChat.API.Controllers;
 
@@ -93,6 +92,14 @@ public class CompanyController(ICompanyService companyService) : BaseController
     public async Task<IActionResult> GetUserPositions([FromRoute] int companyId)
     {
         var result = await _companyService.GetUserPositionsAsync(CurrentUserId, companyId);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpGet("{companyId:int}/members")]
+    public async Task<IActionResult> GetCompanyMembers([FromRoute] int companyId)
+    {
+        var result = await _companyService.GetCompanyMembersAsync(CurrentUserId, companyId);
         return result.ToActionResult();
     }
 }

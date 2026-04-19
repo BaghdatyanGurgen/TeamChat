@@ -44,4 +44,8 @@ public class PositionRepository(AppDbContext context)
             .AsNoTracking()
             .ToListAsync();
     }
+    public async Task<List<Position>> GetChildrenAsync(int positionId)
+    => await _context.Positions
+        .Where(p => p.ParentPositionId == positionId)
+        .ToListAsync();
 }

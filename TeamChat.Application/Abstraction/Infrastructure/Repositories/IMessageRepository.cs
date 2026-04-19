@@ -1,5 +1,5 @@
-﻿using TeamChat.Application.Abstraction.Infrastructure.Repositories.Base;
-using TeamChat.Domain.Entities;
+﻿using TeamChat.Domain.Entities;
+using TeamChat.Application.Abstraction.Infrastructure.Repositories.Base;
 
 namespace TeamChat.Application.Abstraction.Infrastructure.Repositories;
 

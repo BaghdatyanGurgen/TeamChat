@@ -8,3 +8,11 @@ public record CompanyUserResponse(int Id, Guid UserId, int CompanyId, int Positi
     {
     }
 }
+
+public record CompanyMemberResponse(
+    Guid UserId,
+    string FirstName,
+    string LastName,
+    string? AvatarUrl,
+    string PositionTitle
+);

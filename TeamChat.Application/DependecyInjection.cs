@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddScoped<ICompanyService, CompanyService>();
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<IMessageService, MessageService>();
+        services.AddScoped<IPositionHierarchyService, PositionHierarchyService>();
         return services;
     }
 }
