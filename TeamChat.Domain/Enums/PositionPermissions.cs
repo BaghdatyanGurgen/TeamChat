@@ -17,4 +17,5 @@ public enum PositionPermissions
     PinMessage = 1 << 9,
     ManageMembers = 1 << 10,
     DeleteChat = 1 << 11,
+    ManageDirectMessagePolicy = 1 << 12,
 }

@@ -1,4 +1,6 @@
-﻿namespace TeamChat.Domain.Entities;
+﻿using TeamChat.Domain.Enums;
+
+namespace TeamChat.Domain.Entities;
 
 public class Company
 {
@@ -11,6 +13,8 @@ public class Company
     public string Description { get; set; } = string.Empty;
 
     public string? LogoUrl { get; set; }
+
+    public DirectMessagePolicy DmPolicy { get; set; } = DirectMessagePolicy.Anyone;
 
     // Foreign Keys
     public Guid DirectorId { get; set; }

@@ -8,9 +8,10 @@ namespace TeamChat.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CompanyController(ICompanyService companyService) : BaseController
+public class CompanyController(ICompanyService companyService, IDirectMessagePolicyService dmPolicyService) : BaseController
 {
     private readonly ICompanyService _companyService = companyService;
+    private readonly IDirectMessagePolicyService _dmPolicyService = dmPolicyService;
 
     [Authorize]
     [HttpPost("create-company")]
@@ -100,6 +101,34 @@ public class CompanyController(ICompanyService companyService) : BaseController
     public async Task<IActionResult> GetCompanyMembers([FromRoute] int companyId)
     {
         var result = await _companyService.GetCompanyMembersAsync(CurrentUserId, companyId);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpGet("{companyId:int}/dm-policy")]
+    public async Task<IActionResult> GetDmPolicy([FromRoute] int companyId)
+    {
+        var result = await _dmPolicyService.GetPolicyAsync(companyId);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpPut("{companyId:int}/dm-policy")]
+    public async Task<IActionResult> SetDmPolicy(
+        [FromRoute] int companyId,
+        [FromBody] SetDirectMessagePolicyRequest request)
+    {
+        var result = await _dmPolicyService.SetPolicyAsync(
+            CurrentUserId, companyId, request.Policy);
+        return result.ToActionResult();
+    }
+
+    [Authorize]
+    [HttpGet("{companyId:int}/dm-contacts")]
+    public async Task<IActionResult> GetAvailableDirectContacts([FromRoute] int companyId)
+    {
+        var result = await _dmPolicyService.GetAvailableDirectContactsAsync(
+            CurrentUserId, companyId);
         return result.ToActionResult();
     }
 }

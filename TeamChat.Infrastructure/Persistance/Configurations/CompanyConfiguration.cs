@@ -1,6 +1,7 @@
-﻿using TeamChat.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using TeamChat.Domain.Entities;
+using TeamChat.Domain.Enums;
 
 namespace TeamChat.Infrastructure.Persistance.Configurations;
 
@@ -19,5 +20,9 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.HasMany(c => c.Chats)
                .WithOne(ch => ch.Company)
                .HasForeignKey(ch => ch.CompanyId);
+
+        builder.Property(c => c.DmPolicy)
+               .HasDefaultValue(DirectMessagePolicy.Anyone)
+               .HasColumnType("integer");
     }
 }

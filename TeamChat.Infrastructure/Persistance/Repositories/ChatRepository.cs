@@ -31,6 +31,8 @@ public class ChatRepository(AppDbContext context)
         return await _context.Chats
             .Where(c => c.CompanyId == companyId &&
                         c.Members.Any(m => m.UserId == userId))
+            .Include(c => c.Members)
+                .ThenInclude(m => m.User)
             .ToListAsync();
     }
 

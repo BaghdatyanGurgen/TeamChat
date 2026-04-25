@@ -19,6 +19,7 @@ public class ChatService(
     IChatMemberRepository chatMemberRepository,
     IChatPositionAccessRepository chatPositionAccessRepository,
     IPositionHierarchyService positionHierarchyService,
+    IDirectMessagePolicyService directMessagePolicyService,
     IPositionRepository positionRepository) : IChatService
 {
     // ==================== СОЗДАНИЕ ЧАТОВ ====================
@@ -126,7 +127,10 @@ public class ChatService(
         var targetUser = await companyUserRepository.GetByUserAndCompany(targetUserId, companyId)
             ?? throw new ValidationException("Target user is not in this company");
 
-        // Проверяем, нет ли уже приватного чата между ними
+        var canMessage = await directMessagePolicyService.CanMessageAsync(userId, targetUserId, companyId);
+        if (!canMessage)
+            throw new NoAccessException();
+
         var existingChat = await chatRepository.GetPrivateChatAsync(userId, targetUserId, companyId);
         if (existingChat != null)
             return ResponseModel<CreateChatResponse>.Success(
@@ -298,7 +302,6 @@ public class ChatService(
         }
     }
 
-    // ==================== ПОЛУЧЕНИЕ ЧАТОВ ====================
 
     public async Task<ResponseModel<List<CompanyChatResponse>>> GetUserCompanyChatsAsync(
         Guid userId, int companyId)
@@ -307,18 +310,31 @@ public class ChatService(
         if (companyUser == null)
             throw new CompanyUserNotFoundException();
 
-        // 1. Чаты через прямое членство (ChatMember)
         var directChats = await chatRepository.GetUserCompanyChatsAsync(userId, companyId);
 
-        // 2. Чаты через позицию (ChatPositionAccess + наследование)
         var positionChats = await positionHierarchyService
             .GetAccessibleChatsAsync(companyUser.PositionId);
 
-        // Объединяем и убираем дубли
         var allChats = directChats
             .Concat(positionChats.Where(c => c.CompanyId == companyId))
             .DistinctBy(c => c.Id)
-            .Select(c => new CompanyChatResponse(c.Id, c.Name, c.CreatedAt, c.Scope))
+            .Select(c =>
+            {
+                string? otherUserName = null;
+                string? otherUserAvatarUrl = null;
+
+                if (c.Scope == ChatScope.Private && c.Members != null)
+                {
+                    var other = c.Members.FirstOrDefault(m => m.UserId != userId);
+                    if (other?.User != null)
+                    {
+                        otherUserName = $"{other.User.FirstName} {other.User.LastName}".Trim();
+                        otherUserAvatarUrl = other.User.AvatarUrl;
+                    }
+                }
+
+                return new CompanyChatResponse(c.Id, c.Name, c.CreatedAt, c.Scope, otherUserName, otherUserAvatarUrl);
+            })
             .ToList();
 
         return ResponseModel<List<CompanyChatResponse>>.Success(allChats);

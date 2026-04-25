@@ -15,4 +15,11 @@ public record CreateChatResponse(Guid Id, string Name, Guid OwnerId, DateTime Cr
 }
 
 public record ChatMemberResponse(Guid Id, Guid ChatId, Guid UserId, DateTime JoinedAt);
-public record CompanyChatResponse(Guid Id, string Name, DateTime CreatedAt, ChatScope Scope);
+public record CompanyChatResponse(
+    Guid Id,
+    string Name,
+    DateTime CreatedAt,
+    ChatScope Scope,
+    string? OtherUserName = null,
+    string? OtherUserAvatarUrl = null
+);

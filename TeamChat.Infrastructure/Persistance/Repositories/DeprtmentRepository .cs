@@ -23,5 +23,11 @@ namespace TeamChat.Infrastructure.Persistance.Repositories
                 .OrderBy(d => d.Name)
                 .ToListAsync();
         }
+        public async Task<IEnumerable<DepartmentMember>> GetByCompanyUserAsync(int companyUserId)
+        {
+            return await _context.DepartmentMembers
+                .Where(dm => dm.CompanyUserId == companyUserId)
+                .ToListAsync();
+        }
     }
 }

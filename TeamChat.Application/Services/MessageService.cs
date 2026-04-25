@@ -6,6 +6,7 @@ using TeamChat.Messaging.Contracts.Message;
 using TeamChat.Application.Abstraction.Services;
 using TeamChat.Application.Abstraction.Infrastructure.File;
 using TeamChat.Application.Abstraction.Infrastructure.Messaging;
+using TeamChat.Application.Abstraction.Infrastructure.Security;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
 
 namespace TeamChat.Application.Services;
@@ -16,7 +17,8 @@ public class MessageService(
     IChatMemberRepository chatMemberRepository,
     IUserRepository userRepository,
     IMessagePublisher messagePublisher,
-    IFileService fileService) : IMessageService
+    IFileService fileService,
+    IEncryptionService encryptionService) : IMessageService
 {
     private readonly IMessageRepository _messageRepository = messageRepository;
     private readonly IChatRepository _chatRepository = chatRepository;
@@ -24,6 +26,7 @@ public class MessageService(
     private readonly IUserRepository _userRepository = userRepository;
     private readonly IMessagePublisher _messagePublisher = messagePublisher;
     private readonly IFileService _fileService = fileService;
+    private readonly IEncryptionService _encryptionService = encryptionService;
 
     public async Task<ResponseModel<MessageResponse>> CreateMessageAsync(Guid userId, CreateMessageRequest request)
     {
@@ -31,12 +34,14 @@ public class MessageService(
         _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, request.ChatId) ?? throw new NoAccessException();
         var user = await _userRepository.GetByIdAsync(userId) ?? throw new UserNotFoundException();
 
+        var encryptedContent = _encryptionService.Encrypt(request.Content ?? "");
+
         var message = new Message
         {
             ChatId = chat.Id,
             SenderId = userId,
             Sender = user,
-            Content = request.Content ?? "",
+            Content = encryptedContent,
             SentAt = DateTime.UtcNow
         };
 
@@ -58,10 +63,12 @@ public class MessageService(
         }
 
         await _messagePublisher.PublishAsync(new MessageCreatedEvent(
-            new MessageCreatedPayload(chat.Id, created.Id, created.SenderId, created.Content, created.SentAt)));
+            new MessageCreatedPayload(chat.Id, created.Id, created.SenderId, request.Content ?? "", created.SentAt)));
 
         var withAttachments = await _messageRepository.GetByIdAsync(created.Id) ?? created;
-        return ResponseModel<MessageResponse>.Success(new MessageResponse(withAttachments));
+
+        return ResponseModel<MessageResponse>.Success(
+            ToDecryptedResponse(withAttachments));
     }
 
     public async Task<ResponseModel<IEnumerable<MessageResponse>>> GetChatMessagesAsync(Guid userId, Guid chatId)
@@ -70,7 +77,9 @@ public class MessageService(
         _ = await _chatMemberRepository.GetByUserAndChatAsync(userId, chatId) ?? throw new NoAccessException();
 
         var messages = await _messageRepository.GetMessagesForChatAsync(chatId);
-        return ResponseModel<IEnumerable<MessageResponse>>.Success(messages.Select(m => new MessageResponse(m)));
+
+        return ResponseModel<IEnumerable<MessageResponse>>.Success(
+            messages.Select(ToDecryptedResponse));
     }
 
     public async Task<ResponseModel<MessageResponse>> EditMessageAsync(Guid userId, Guid messageId, string newContent)
@@ -78,11 +87,11 @@ public class MessageService(
         var message = await _messageRepository.GetByIdAsync(messageId) ?? throw new MessageNotFoundException();
         if (message.SenderId != userId) throw new NoAccessException();
 
-        message.Content = newContent;
+        message.Content = _encryptionService.Encrypt(newContent);
         message.EditedAt = DateTime.UtcNow;
         await _messageRepository.UpdateAsync(message);
 
-        return ResponseModel<MessageResponse>.Success(new MessageResponse(message));
+        return ResponseModel<MessageResponse>.Success(ToDecryptedResponse(message));
     }
 
     public async Task<ResponseModel<MessageResponse>> DeleteMessageAsync(Guid userId, Guid messageId)
@@ -91,7 +100,7 @@ public class MessageService(
         if (message.SenderId != userId) throw new NoAccessException();
 
         await _messageRepository.RemoveAsync(message);
-        return ResponseModel<MessageResponse>.Success(new MessageResponse(message));
+        return ResponseModel<MessageResponse>.Success(ToDecryptedResponse(message));
     }
 
     public async Task<ResponseModel> MarkAllAsReadAsync(Guid chatId, Guid userId)
@@ -124,11 +133,28 @@ public class MessageService(
 
         message.Tag = tag;
         await _messageRepository.UpdateAsync(message);
-        return ResponseModel<MessageResponse>.Success(new MessageResponse(message));
+        return ResponseModel<MessageResponse>.Success(ToDecryptedResponse(message));
     }
 
     public Task<ResponseModel<IEnumerable<MessageResponse>>> GetMessagesPagedAsync(Guid chatId, int page, int pageSize)
     {
         throw new NotImplementedException();
+    }
+
+    private MessageResponse ToDecryptedResponse(Message message)
+    {
+        var decryptedContent = _encryptionService.Decrypt(message.Content);
+
+        return new MessageResponse(
+            message.Id,
+            message.ChatId,
+            message.SenderId,
+            message.Sender?.FirstName + " " + message.Sender?.LastName,
+            message.Sender?.AvatarUrl,
+            decryptedContent,
+            message.SentAt,
+            message.EditedAt == default ? null : message.EditedAt,
+            message.Attachments?.Select(a => new MessageAttachmentResponse(a.Id, a.FileUrl, a.OriginalFileName)).ToList()
+        );
     }
 }

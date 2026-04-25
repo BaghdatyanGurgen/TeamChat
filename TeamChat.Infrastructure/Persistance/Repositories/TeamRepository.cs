@@ -24,4 +24,10 @@ public class TeamRepository(AppDbContext db)
             .Include(tm=> tm.CompanyUser)
             .ToListAsync();
     }
+    public async Task<IEnumerable<TeamMember>> GetByCompanyUserAsync(int companyUserId)
+    {
+        return await _context.TeamMembers
+            .Where(tm => tm.CompanyUserId == companyUserId)
+            .ToListAsync();
+    }
 }

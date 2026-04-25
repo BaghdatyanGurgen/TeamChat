@@ -1,19 +1,20 @@
-﻿using TeamChat.Contracts.Grpc;
-using TeamChat.Infrastructure.File;
-using TeamChat.Infrastructure.Email;
-using Microsoft.EntityFrameworkCore;
-using TeamChat.Infrastructure.Messaging;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using TeamChat.Infrastructure.Persistance;
-using TeamChat.Infrastructure.Security.Jwt;
 using Microsoft.Extensions.DependencyInjection;
-using TeamChat.Infrastructure.Security.RefreshToken;
-using TeamChat.Infrastructure.Persistance.Repositories;
-using TeamChat.Application.Abstraction.Infrastructure.File;
 using TeamChat.Application.Abstraction.Infrastructure.Email;
-using TeamChat.Application.Abstraction.Infrastructure.Security;
+using TeamChat.Application.Abstraction.Infrastructure.File;
 using TeamChat.Application.Abstraction.Infrastructure.Messaging;
 using TeamChat.Application.Abstraction.Infrastructure.Repositories;
+using TeamChat.Application.Abstraction.Infrastructure.Security;
+using TeamChat.Contracts.Grpc;
+using TeamChat.Infrastructure.Email;
+using TeamChat.Infrastructure.File;
+using TeamChat.Infrastructure.Messaging;
+using TeamChat.Infrastructure.Persistance;
+using TeamChat.Infrastructure.Persistance.Repositories;
+using TeamChat.Infrastructure.Security.Encryption;
+using TeamChat.Infrastructure.Security.Jwt;
+using TeamChat.Infrastructure.Security.RefreshToken;
 
 namespace TeamChat.Infrastructure
 {
@@ -56,11 +57,21 @@ namespace TeamChat.Infrastructure
 
         }
 
+        public static IServiceCollection AddEncryptionInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        {
+            var key = configuration["Encryption:Key"]
+                ?? throw new InvalidOperationException("Encryption:Key is not configured");
+
+            services.AddSingleton<IEncryptionService>(new AesEncryptionService(key));
+            return services;
+        }
+
         public static IServiceCollection AddAllInfrastructure(this IServiceCollection services, IConfiguration configuration)
             => services.AddPersistanceInfrastructure(configuration)
                        .AddMessagingInfrastructure()
                        .AddEmailInfrastructure()
                        .AddSecurityInfrastructure()
-                       .AddFileInfrestructure(configuration);
+                       .AddFileInfrestructure(configuration)
+                       .AddEncryptionInfrastructure(configuration);
     }
 }
